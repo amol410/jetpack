@@ -1,0 +1,4 @@
+my-quiz-app-key
+
+my-app-alias
+
