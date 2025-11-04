@@ -10,7 +10,10 @@ import androidx.lifecycle.lifecycleScope
 import com.dolphin.jetpack.fcm.FCMTokenManager
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
@@ -24,6 +27,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import com.dolphin.jetpack.domain.model.QuestionAnswer
 import com.dolphin.jetpack.domain.model.Quiz
 import com.dolphin.jetpack.presentation.screens.*
@@ -129,7 +133,7 @@ fun QuizApp() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MainQuizApp(authViewModel: AuthViewModel) {
     var currentScreen by remember { mutableStateOf(Screen.QuizSelection) }
@@ -142,6 +146,13 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
     var selectedAttemptId by remember { mutableStateOf(0L) }
     var selectedTopic by remember { mutableStateOf<com.dolphin.jetpack.domain.model.Topic?>(null) }
     var selectedChapterId by rememberSaveable { mutableStateOf(1) } // Added chapter selection state
+
+    // Pager state for swipe navigation - Order: Notes, Quizzes, History, Statistics
+    val pagerState = rememberPagerState(
+        initialPage = 1, // Start with Quizzes
+        pageCount = { 4 }
+    )
+    val coroutineScope = rememberCoroutineScope()
 
     // ViewModels
     val quizViewModel: QuizViewModel = viewModel(
@@ -170,6 +181,24 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
             }
         }
     )
+
+    // Sync pager state with bottom nav selection
+    LaunchedEffect(pagerState.currentPage) {
+        selectedBottomNav = when (pagerState.currentPage) {
+            0 -> BottomNavItem.Notes
+            1 -> BottomNavItem.Quizzes
+            2 -> BottomNavItem.History
+            3 -> BottomNavItem.Statistics
+            else -> BottomNavItem.Quizzes
+        }
+        currentScreen = when (pagerState.currentPage) {
+            0 -> Screen.Notes
+            1 -> Screen.QuizSelection
+            2 -> Screen.History
+            3 -> Screen.Statistics
+            else -> Screen.QuizSelection
+        }
+    }
 
     // Check for resume states
     LaunchedEffect(Unit) {
@@ -215,8 +244,9 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                         label = { Text("Notes") },
                         selected = selectedBottomNav == BottomNavItem.Notes,
                         onClick = {
-                            selectedBottomNav = BottomNavItem.Notes
-                            currentScreen = Screen.Notes
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(0)
+                            }
                         }
                     )
                     NavigationBarItem(
@@ -224,8 +254,9 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                         label = { Text("Quizzes") },
                         selected = selectedBottomNav == BottomNavItem.Quizzes,
                         onClick = {
-                            selectedBottomNav = BottomNavItem.Quizzes
-                            currentScreen = Screen.QuizSelection
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(1)
+                            }
                         }
                     )
                     NavigationBarItem(
@@ -233,8 +264,9 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                         label = { Text("History") },
                         selected = selectedBottomNav == BottomNavItem.History,
                         onClick = {
-                            selectedBottomNav = BottomNavItem.History
-                            currentScreen = Screen.History
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(2)
+                            }
                         }
                     )
                     NavigationBarItem(
@@ -242,8 +274,9 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                         label = { Text("Statistics") },
                         selected = selectedBottomNav == BottomNavItem.Statistics,
                         onClick = {
-                            selectedBottomNav = BottomNavItem.Statistics
-                            currentScreen = Screen.Statistics
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(3)
+                            }
                         }
                     )
                 }
@@ -251,44 +284,14 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
         }
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
+            // Show detail screens outside of pager
             when (currentScreen) {
-                Screen.QuizSelection -> {
-                    QuizSelectionScreen(
-                        modifier = Modifier.fillMaxSize(),
-                        onQuizSelected = { quiz, withTimer, minutes ->
-                            selectedQuiz = quiz
-                            timerEnabled = true // Always enable timer since No Timer option is removed
-                            timerMinutes = minutes // Set the selected minutes
-                            currentScreen = Screen.QuizInProgress // Always go to quiz with timer
-                            userAnswers = emptyMap()
-                        },
-                        hasResumeState = quizViewModel.hasResumeState.collectAsState().value,
-                        onResumeQuiz = { quiz ->
-                            selectedQuiz = quiz
-                            quizViewModel.loadQuizState(quiz.title)
-                        },
-                        onSignOut = {
-                            authViewModel.signOut()
-                        }
-                    )
-
-                    // Handle resume state loading
-                    val quizUiState by quizViewModel.uiState.collectAsState()
-                    LaunchedEffect(quizUiState) {
-                        if (quizUiState is QuizUiState.StateLoaded) {
-                            currentScreen = Screen.QuizInProgress
-                        }
-                    }
-                }
-
                 Screen.TimerSettings -> {
                     // Redirect to quiz selection if somehow accessed
                     LaunchedEffect(Unit) {
                         currentScreen = Screen.QuizSelection
                     }
                 }
-
-
 
                 Screen.QuizInProgress -> {
                     QuizInProgressScreen(
@@ -346,19 +349,6 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                     )
                 }
 
-                Screen.Notes -> {
-                    NotesScreen(
-                        modifier = Modifier.fillMaxSize(),
-                        selectedChapterId = selectedChapterId,
-                        onChapterSelected = { chapterId ->
-                            selectedChapterId = chapterId
-                        },
-                        onContinueLesson = { topic ->
-                            selectedTopic = topic
-                            currentScreen = Screen.LessonNotes
-                        }
-                    )
-                }
                 Screen.LessonNotes -> {
                     selectedTopic?.let { topic ->
                         LessonNotesScreen(
@@ -368,16 +358,6 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                             }
                         )
                     }
-                }
-
-                Screen.History -> {
-                    HistoryScreen(
-                        viewModel = historyViewModel,
-                        onAttemptClick = { attemptId ->
-                            selectedAttemptId = attemptId
-                            currentScreen = Screen.HistoryDetail
-                        }
-                    )
                 }
 
                 Screen.HistoryDetail -> {
@@ -390,10 +370,75 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                     )
                 }
 
-                Screen.Statistics -> {
-                    StatisticsScreen(
-                        viewModel = statsViewModel
-                    )
+                // Main tab screens - use HorizontalPager
+                Screen.Notes, Screen.QuizSelection, Screen.History, Screen.Statistics -> {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize(),
+                        userScrollEnabled = true // Enable swipe gestures
+                    ) { page ->
+                        when (page) {
+                            0 -> {
+                                // Notes tab
+                                NotesScreen(
+                                    modifier = Modifier.fillMaxSize(),
+                                    selectedChapterId = selectedChapterId,
+                                    onChapterSelected = { chapterId ->
+                                        selectedChapterId = chapterId
+                                    },
+                                    onContinueLesson = { topic ->
+                                        selectedTopic = topic
+                                        currentScreen = Screen.LessonNotes
+                                    }
+                                )
+                            }
+                            1 -> {
+                                // Quizzes tab
+                                QuizSelectionScreen(
+                                    modifier = Modifier.fillMaxSize(),
+                                    onQuizSelected = { quiz, withTimer, minutes ->
+                                        selectedQuiz = quiz
+                                        timerEnabled = true
+                                        timerMinutes = minutes
+                                        currentScreen = Screen.QuizInProgress
+                                        userAnswers = emptyMap()
+                                    },
+                                    hasResumeState = quizViewModel.hasResumeState.collectAsState().value,
+                                    onResumeQuiz = { quiz ->
+                                        selectedQuiz = quiz
+                                        quizViewModel.loadQuizState(quiz.title)
+                                    },
+                                    onSignOut = {
+                                        authViewModel.signOut()
+                                    }
+                                )
+
+                                // Handle resume state loading
+                                val quizUiState by quizViewModel.uiState.collectAsState()
+                                LaunchedEffect(quizUiState) {
+                                    if (quizUiState is QuizUiState.StateLoaded) {
+                                        currentScreen = Screen.QuizInProgress
+                                    }
+                                }
+                            }
+                            2 -> {
+                                // History tab
+                                HistoryScreen(
+                                    viewModel = historyViewModel,
+                                    onAttemptClick = { attemptId ->
+                                        selectedAttemptId = attemptId
+                                        currentScreen = Screen.HistoryDetail
+                                    }
+                                )
+                            }
+                            3 -> {
+                                // Statistics tab
+                                StatisticsScreen(
+                                    viewModel = statsViewModel
+                                )
+                            }
+                        }
+                    }
                 }
 
                 // Login and EmailAuth screens are handled in QuizApp composable
