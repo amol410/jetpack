@@ -201,20 +201,27 @@ fun LessonNotesScreen(
         }
 
         // Floating back button overlay (doesn't take space in layout)
-        IconButton(
-            onClick = onBack,
+        Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(16.dp)
                 .size(48.dp)
                 .zIndex(10f)
+                .clip(CircleShape)
+                .background(Color(0xFF2196F3).copy(alpha = 0.5f)),
+            contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Back",
-                tint = Color.White.copy(alpha = 0.7f),
-                modifier = Modifier.size(28.dp)
-            )
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White.copy(alpha = 0.8f),
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
     }
 }
