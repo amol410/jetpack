@@ -201,23 +201,19 @@ fun LessonNotesScreen(
         }
 
         // Floating back button overlay (doesn't take space in layout)
-        FloatingActionButton(
+        IconButton(
             onClick = onBack,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(16.dp)
                 .size(48.dp)
-                .zIndex(10f),
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-            elevation = FloatingActionButtonDefaults.elevation(
-                defaultElevation = 4.dp,
-                pressedElevation = 8.dp
-            )
+                .zIndex(10f)
         ) {
             Icon(
                 imageVector = Icons.Default.ArrowBack,
                 contentDescription = "Back",
-                tint = MaterialTheme.colorScheme.onSurface
+                tint = Color.White.copy(alpha = 0.7f),
+                modifier = Modifier.size(28.dp)
             )
         }
     }
