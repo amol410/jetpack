@@ -1,7 +1,10 @@
 package com.dolphin.jetpack.presentation.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -10,18 +13,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.dolphin.jetpack.domain.model.Topic
 import com.dolphin.jetpack.presentation.viewmodel.NotesViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,33 +50,46 @@ fun LessonNotesScreen(
     val isLoadingNotes by notesViewModel.isLoadingNotes.collectAsState()
     val error by notesViewModel.error.collectAsState()
 
+    // Handle back button press
+    BackHandler {
+        onBack()
+    }
+
+    // Track swipe gesture
+    var offsetX by remember { mutableStateOf(0f) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        // If swiped more than 100dp to the right, go back
+                        if (offsetX > 100) {
+                            onBack()
+                        }
+                        offsetX = 0f
+                    },
+                    onHorizontalDrag = { _, dragAmount ->
+                        // Only allow right swipe (positive values)
+                        val newOffset = offsetX + dragAmount
+                        if (newOffset >= 0) {
+                            offsetX = newOffset
+                        }
+                    }
+                )
+            }
     ) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Back button at top left
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier
-                    .padding(8.dp)
-                    .size(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
-            }
-
             // Centered Topic Name with Background
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .padding(horizontal = 24.dp, vertical = 16.dp)
+                    .padding(top = 8.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(MaterialTheme.colorScheme.primaryContainer)
                     .padding(20.dp),
@@ -175,6 +198,27 @@ fun LessonNotesScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                 }
             }
+        }
+
+        // Floating back button overlay (doesn't take space in layout)
+        FloatingActionButton(
+            onClick = onBack,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(16.dp)
+                .size(48.dp)
+                .zIndex(10f),
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+            elevation = FloatingActionButtonDefaults.elevation(
+                defaultElevation = 4.dp,
+                pressedElevation = 8.dp
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Default.ArrowBack,
+                contentDescription = "Back",
+                tint = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }
