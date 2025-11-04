@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.dolphin.jetpack" />
+                  <option name="mobileSdkAppId" value="1:954842353363:android:b684bf4906478da4328e26" />
+                  <option name="projectId" value="speedup-812dc" />
+                  <option name="projectNumber" value="954842353363" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .response {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>API Debug Test</h1>
+
+    <div class="test-section">
+        <h2>Configuration</h2>
+        <label>Base URL:</label>
+        <input type="text" id="baseUrl" value="https://jetpack.dolphincoder.com/api" placeholder="https://your-subdomain.com/api">
+        <label>API Key:</label>
+        <input type="text" id="apiKey" value="jetpack_prod_a1b2c3d4e5f6g7h8i9j0" placeholder="Your API Key">
+    </div>
+
+    <div class="test-section">
+        <h2>Debug API</h2>
+        <p>This will show what headers are being received and what API keys are in the database.</p>
+        <button onclick="testDebug()">Test Debug Endpoint</button>
+        <div class="response" id="debugResponse"></div>
+    </div>
+
+    <script>
+        function getBaseUrl() {
+            return document.getElementById('baseUrl').value;
+        }
+
+        function getApiKey() {
+            return document.getElementById('apiKey').value;
+        }
+
+        async function testDebug() {
+            try {
+                const response = await fetch(getBaseUrl() + '/debug.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': getApiKey()
+                    },
+                    body: JSON.stringify({test: 'data'})
+                });
+                const result = await response.json();
+                document.getElementById('debugResponse').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('debugResponse').textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

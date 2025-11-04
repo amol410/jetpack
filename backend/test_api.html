@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jetpack API Tester</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .response {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Jetpack API Tester</h1>
+
+    <div class="test-section">
+        <h2>Configuration</h2>
+        <label>Base URL:</label>
+        <input type="text" id="baseUrl" value="https://your-subdomain.hostinger.com/api" placeholder="https://your-subdomain.hostinger.com/api">
+        <label>API Key:</label>
+        <input type="text" id="apiKey" value="jetpack_dev_key_change_this_in_production" placeholder="Your API Key">
+    </div>
+
+    <div class="test-section">
+        <h2>1. Register User</h2>
+        <input type="text" id="firebaseUid" placeholder="Firebase UID" value="test_user_123">
+        <input type="text" id="email" placeholder="Email" value="test@example.com">
+        <input type="text" id="displayName" placeholder="Display Name" value="Test User">
+        <button onclick="registerUser()">Register User</button>
+        <div class="response" id="registerResponse"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Start Session</h2>
+        <input type="text" id="sessionFirebaseUid" placeholder="Firebase UID" value="test_user_123">
+        <input type="text" id="deviceId" placeholder="Device ID" value="device_12345">
+        <input type="text" id="deviceModel" placeholder="Device Model" value="Samsung Galaxy S21">
+        <input type="text" id="osVersion" placeholder="OS Version" value="Android 13">
+        <input type="text" id="appVersion" placeholder="App Version" value="2.0">
+        <button onclick="startSession()">Start Session</button>
+        <div class="response" id="sessionStartResponse"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. End Session</h2>
+        <input type="text" id="sessionId" placeholder="Session ID">
+        <button onclick="endSession()">End Session</button>
+        <div class="response" id="sessionEndResponse"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Get User Stats</h2>
+        <input type="text" id="statsFirebaseUid" placeholder="Firebase UID" value="test_user_123">
+        <button onclick="getUserStats()">Get Stats</button>
+        <div class="response" id="statsResponse"></div>
+    </div>
+
+    <script>
+        function getBaseUrl() {
+            return document.getElementById('baseUrl').value;
+        }
+
+        function getApiKey() {
+            return document.getElementById('apiKey').value;
+        }
+
+        async function registerUser() {
+            const data = {
+                firebase_uid: document.getElementById('firebaseUid').value,
+                email: document.getElementById('email').value,
+                display_name: document.getElementById('displayName').value
+            };
+
+            try {
+                const response = await fetch(getBaseUrl() + '/user_register.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': getApiKey()
+                    },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                document.getElementById('registerResponse').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('registerResponse').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function startSession() {
+            const data = {
+                firebase_uid: document.getElementById('sessionFirebaseUid').value,
+                device_id: document.getElementById('deviceId').value,
+                device_model: document.getElementById('deviceModel').value,
+                os_version: document.getElementById('osVersion').value,
+                app_version: document.getElementById('appVersion').value
+            };
+
+            try {
+                const response = await fetch(getBaseUrl() + '/session_start.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': getApiKey()
+                    },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                document.getElementById('sessionStartResponse').textContent = JSON.stringify(result, null, 2);
+                if (result.success && result.data.session_id) {
+                    document.getElementById('sessionId').value = result.data.session_id;
+                }
+            } catch (error) {
+                document.getElementById('sessionStartResponse').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function endSession() {
+            const data = {
+                session_id: document.getElementById('sessionId').value
+            };
+
+            try {
+                const response = await fetch(getBaseUrl() + '/session_end.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': getApiKey()
+                    },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                document.getElementById('sessionEndResponse').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('sessionEndResponse').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function getUserStats() {
+            const firebaseUid = document.getElementById('statsFirebaseUid').value;
+
+            try {
+                const response = await fetch(getBaseUrl() + '/get_user_stats.php?firebase_uid=' + firebaseUid, {
+                    method: 'GET',
+                    headers: {
+                        'X-API-Key': getApiKey()
+                    }
+                });
+                const result = await response.json();
+                document.getElementById('statsResponse').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('statsResponse').textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
