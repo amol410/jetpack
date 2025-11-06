@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
 import com.dolphin.jetpack.domain.model.Quiz
 import com.dolphin.jetpack.domain.model.Question
 
@@ -35,10 +36,10 @@ fun QuizResultScreen(
     val percentage = (correctCount * 100) / totalQuestions
 
     val resultColor = when {
-        percentage >= 90 -> Color(0xFF4CAF50)
-        percentage >= 70 -> Color(0xFF2196F3)
-        percentage >= 50 -> Color(0xFFFF9800)
-        else -> Color(0xFFF44336)
+        percentage >= 90 -> MaterialTheme.colorScheme.primary
+        percentage >= 70 -> MaterialTheme.colorScheme.tertiary
+        percentage >= 50 -> MaterialTheme.colorScheme.secondary
+        else -> MaterialTheme.colorScheme.error
     }
 
     val resultMessage = when {
@@ -100,12 +101,12 @@ fun QuizResultScreen(
                                     text = "$percentage%",
                                     fontSize = 48.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onPrimary
                                 )
                                 Text(
                                     text = "$correctCount/$totalQuestions",
                                     fontSize = 20.sp,
-                                    color = Color.White.copy(alpha = 0.9f)
+                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
                                 )
                             }
                         }
@@ -169,15 +170,15 @@ fun QuizResultQuestionCard(
     wasAnswered: Boolean
 ) {
     val backgroundColor = when {
-        !wasAnswered -> Color.Gray.copy(alpha = 0.1f)
-        isCorrect -> Color(0xFF4CAF50).copy(alpha = 0.1f)
-        else -> Color(0xFFF44336).copy(alpha = 0.1f)
+        !wasAnswered -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f)
+        isCorrect -> MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+        else -> MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
     }
 
     val iconColor = when {
-        !wasAnswered -> Color.Gray
-        isCorrect -> Color(0xFF4CAF50)
-        else -> Color(0xFFF44336)
+        !wasAnswered -> MaterialTheme.colorScheme.onSurfaceVariant
+        isCorrect -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.error
     }
 
     Card(
@@ -206,7 +207,7 @@ fun QuizResultQuestionCard(
                         text = "Question $questionNumber",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
@@ -226,20 +227,20 @@ fun QuizResultQuestionCard(
                     Text(
                         text = "Not answered",
                         fontSize = 14.sp,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
                         text = "Correct answer: ${question.options[question.correctAnswerIndex]}",
                         fontSize = 14.sp,
-                        color = Color(0xFF4CAF50)
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
                 isCorrect -> {
                     Text(
                         text = "✓ Your answer: ${question.options[userAnswer!!]}",
                         fontSize = 14.sp,
-                        color = Color(0xFF4CAF50),
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -247,13 +248,13 @@ fun QuizResultQuestionCard(
                     Text(
                         text = "✗ Your answer: ${question.options[userAnswer!!]}",
                         fontSize = 14.sp,
-                        color = Color(0xFFF44336),
+                        color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
                         text = "✓ Correct answer: ${question.options[question.correctAnswerIndex]}",
                         fontSize = 14.sp,
-                        color = Color(0xFF4CAF50),
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Medium
                     )
                 }

@@ -27,6 +27,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import com.dolphin.jetpack.domain.model.QuestionAnswer
 import com.dolphin.jetpack.domain.model.Quiz
@@ -34,10 +35,12 @@ import com.dolphin.jetpack.presentation.screens.*
 import com.dolphin.jetpack.presentation.viewmodel.AuthState
 import com.dolphin.jetpack.presentation.viewmodel.AuthViewModel
 import com.dolphin.jetpack.presentation.viewmodel.HistoryViewModel
+import com.dolphin.jetpack.presentation.viewmodel.NotesViewModel
 import com.dolphin.jetpack.presentation.viewmodel.QuizUiState
 import com.dolphin.jetpack.presentation.viewmodel.QuizViewModel
 import com.dolphin.jetpack.presentation.viewmodel.StatisticsViewModel
 import com.dolphin.jetpack.ui.theme.JetpackTheme
+import com.dolphin.jetpack.util.ThemePreferences
 
 enum class Screen {
     Login,
@@ -50,7 +53,8 @@ enum class Screen {
     HistoryDetail,
     Statistics,
     Notes,
-    LessonNotes
+    LessonNotes,
+    Settings
 }
 
 enum class BottomNavItem {
@@ -83,7 +87,10 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            JetpackTheme {
+            val themePreferences = remember { ThemePreferences(applicationContext) }
+            val isDarkMode by themePreferences.isDarkModeFlow.collectAsState(initial = false)
+
+            JetpackTheme(darkTheme = isDarkMode) {
                 QuizApp()
             }
         }
@@ -128,6 +135,9 @@ fun QuizApp() {
         }
         is AuthState.Authenticated -> {
             showEmailAuth = false
+            // Update current user ID in repository
+            val userId = (authState as AuthState.Authenticated).user.uid
+            AppModule.updateCurrentUser(userId)
             MainQuizApp(authViewModel = authViewModel)
         }
     }
@@ -154,6 +164,9 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
     )
     val coroutineScope = rememberCoroutineScope()
 
+    // Get context for AdMob initialization
+    val context = androidx.compose.ui.platform.LocalContext.current
+
     // ViewModels
     val quizViewModel: QuizViewModel = viewModel(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
@@ -163,6 +176,11 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
             }
         }
     )
+
+    // Initialize AdMob
+    LaunchedEffect(Unit) {
+        quizViewModel.initializeAdMob(context)
+    }
 
     val historyViewModel: HistoryViewModel = viewModel(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
@@ -294,6 +312,8 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                 }
 
                 Screen.QuizInProgress -> {
+                    // Get activity context for ad showing
+                    val activityContext = androidx.compose.ui.platform.LocalContext.current as? android.app.Activity
                     QuizInProgressScreen(
                         modifier = Modifier.fillMaxSize(),
                         quiz = selectedQuiz!!,
@@ -320,6 +340,7 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                                 )
                             }
 
+                            // Save quiz attempt
                             quizViewModel.saveQuizAttempt(
                                 quizTitle = selectedQuiz!!.title,
                                 score = correctCount,
@@ -330,7 +351,16 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                                 questionAnswers = questionAnswers
                             )
 
-                            currentScreen = Screen.QuizResult
+                            // Show interstitial ad before navigating to results
+                            activityContext?.let { activity ->
+                                quizViewModel.showInterstitialAd(activity) {
+                                    // After ad is dismissed (or if no ad available), navigate to results
+                                    currentScreen = Screen.QuizResult
+                                }
+                            } ?: run {
+                                // If no activity context, navigate directly
+                                currentScreen = Screen.QuizResult
+                            }
                         }
                     )
                 }
@@ -379,12 +409,22 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                     ) { page ->
                         when (page) {
                             0 -> {
-                                // Notes tab
+                                // Notes tab - Lazy loading with optimistic UI
+                                val notesViewModel = remember { com.dolphin.jetpack.presentation.viewmodel.NotesViewModel() }
+                                
+                                // Load content when screen is accessed
+                                LaunchedEffect(currentScreen) {
+                                    if (currentScreen == Screen.Notes) {
+                                        notesViewModel.loadChaptersWithOptimisticUpdate()
+                                    }
+                                }
+                                
                                 NotesScreen(
                                     modifier = Modifier.fillMaxSize(),
                                     selectedChapterId = selectedChapterId,
                                     onChapterSelected = { chapterId ->
                                         selectedChapterId = chapterId
+                                        notesViewModel.loadChaptersWithOptimisticUpdate() // Refresh when chapter changes
                                     },
                                     onContinueLesson = { topic ->
                                         selectedTopic = topic
@@ -393,7 +433,16 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                                 )
                             }
                             1 -> {
-                                // Quizzes tab
+                                // Quizzes tab - Lazy loading with optimistic UI
+                                
+                                // Check resume states when screen is accessed (lazy loading)
+                                LaunchedEffect(currentScreen) {
+                                    if (currentScreen == Screen.QuizSelection) {
+                                        val quizTitles = com.dolphin.jetpack.DataProvider.quizList.map { it.title }
+                                        quizViewModel.checkResumeStates(quizTitles)
+                                    }
+                                }
+                                
                                 QuizSelectionScreen(
                                     modifier = Modifier.fillMaxSize(),
                                     onQuizSelected = { quiz, withTimer, minutes ->
@@ -408,8 +457,8 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                                         selectedQuiz = quiz
                                         quizViewModel.loadQuizState(quiz.title)
                                     },
-                                    onSignOut = {
-                                        authViewModel.signOut()
+                                    onSettingsClick = {
+                                        currentScreen = Screen.Settings
                                     }
                                 )
 
@@ -423,6 +472,16 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                             }
                             2 -> {
                                 // History tab
+                                // Load remote history when screen is accessed with optimistic UI
+                                LaunchedEffect(Unit) { // Only run once when the composable is first created
+                                    val firebaseUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                                    if (firebaseUid != null) {
+                                        historyViewModel.loadRemoteHistory(firebaseUid)
+                                    } else {
+                                        historyViewModel.loadHistory()
+                                    }
+                                }
+                                
                                 HistoryScreen(
                                     viewModel = historyViewModel,
                                     onAttemptClick = { attemptId ->
@@ -433,12 +492,30 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                             }
                             3 -> {
                                 // Statistics tab
+                                // Load remote statistics when screen is accessed with optimistic UI
+                                LaunchedEffect(Unit) { // Only run once when the composable is first created
+                                    val firebaseUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                                    if (firebaseUid != null) {
+                                        statsViewModel.loadRemoteStatistics(firebaseUid)
+                                    } else {
+                                        statsViewModel.loadStatistics()
+                                    }
+                                }
+                                
                                 StatisticsScreen(
                                     viewModel = statsViewModel
                                 )
                             }
                         }
                     }
+                }
+
+                // Settings screen
+                Screen.Settings -> {
+                    SettingsScreen(
+                        onBack = { currentScreen = Screen.QuizSelection },
+                        authViewModel = authViewModel
+                    )
                 }
 
                 // Login and EmailAuth screens are handled in QuizApp composable

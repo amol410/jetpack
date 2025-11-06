@@ -1,6 +1,7 @@
 package com.dolphin.jetpack.presentation.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -17,6 +18,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -140,25 +142,6 @@ fun NotesScreen(
                                     color = MaterialTheme.colorScheme.error
                                 )
                             }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "${overallCompletionPercentage}% Completed",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            LinearProgressIndicator(
-                                progress = overallCompletionPercentage / 100f,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(8.dp)
-                                    .clip(RoundedCornerShape(4.dp)),
-                                color = MaterialTheme.colorScheme.primary,
-                                trackColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
                         }
                     }
                 }
@@ -343,30 +326,18 @@ fun TopicListView(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp)
+            .padding(horizontal = 16.dp)
+            .padding(top = 8.dp)
     ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        chapter.topics.forEachIndexed { index, topic ->
+            TopicItem(
+                topic = topic,
+                topicNumber = index + 1,
+                onClick = { onContinueLesson(topic) }
             )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
-            ) {
-                chapter.topics.forEachIndexed { index, topic ->
-                    TopicItem(
-                        topic = topic,
-                        isFirst = index == 0,
-                        isLast = index == chapter.topics.lastIndex,
-                        showLine = index < chapter.topics.lastIndex,
-                        onClick = { onContinueLesson(topic) }
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
+
+            if (index < chapter.topics.lastIndex) {
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
 
@@ -377,87 +348,89 @@ fun TopicListView(
 @Composable
 fun TopicItem(
     topic: Topic,
-    isFirst: Boolean,
-    isLast: Boolean,
-    showLine: Boolean,
+    topicNumber: Int,
     onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(12.dp)
+            ),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (topic.isCompleted)
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
-            else
-                MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp, horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Left side - Circle with line
-            Box(
-                modifier = Modifier.width(48.dp) // Give consistent width for alignment
+            // Left side: Number and Title
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    // Circle
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .background(
-                                color = if (isFirst || topic.isCompleted)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.surfaceVariant,
-                                shape = CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (topic.isCompleted) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = "Completed",
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
+                // Topic number without background
+                Text(
+                    text = "$topicNumber.",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (topic.isCompleted)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .padding(end = 16.dp)
+                )
 
-                    // Vertical line
-                    if (showLine) {
-                        Box(
-                            modifier = Modifier
-                                .width(2.dp)
-                                .height(48.dp)
-                                .background(
-                                    color = if (topic.isCompleted)
-                                        MaterialTheme.colorScheme.primary
-                                        else
-                                        MaterialTheme.colorScheme.surfaceVariant
-                                )
+                // Topic title
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = topic.title,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2
+                    )
+                    if (topic.isCompleted) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Completed",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
-
-            // Topic Title
-            Text(
-                text = topic.title,
-                fontSize = 16.sp,
-                fontWeight = if (isFirst) FontWeight.Bold else FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            // Right side: Checkmark for completed or arrow for not completed
+            if (topic.isCompleted) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Completed",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = "Start",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .rotate(270f) // Rotate to point right
+                )
+            }
         }
     }
 }

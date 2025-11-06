@@ -101,10 +101,10 @@ fun HistoryDetailScreen(
 fun AttemptHeaderCard(attempt: QuizAttempt) {
     val dateFormat = SimpleDateFormat("EEEE, MMM dd, yyyy 'at' HH:mm", Locale.getDefault())
     val scoreColor = when {
-        attempt.percentage >= 90 -> Color(0xFF4CAF50)
-        attempt.percentage >= 70 -> Color(0xFF2196F3)
-        attempt.percentage >= 50 -> Color(0xFFFF9800)
-        else -> Color(0xFFF44336)
+        attempt.percentage >= 90 -> MaterialTheme.colorScheme.primary
+        attempt.percentage >= 70 -> MaterialTheme.colorScheme.tertiary
+        attempt.percentage >= 50 -> MaterialTheme.colorScheme.secondary
+        else -> MaterialTheme.colorScheme.error
     }
 
     Card(
@@ -128,7 +128,7 @@ fun AttemptHeaderCard(attempt: QuizAttempt) {
             Text(
                 text = dateFormat.format(Date(attempt.dateTime)),
                 fontSize = 14.sp,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -144,12 +144,12 @@ fun AttemptHeaderCard(attempt: QuizAttempt) {
                         text = "${attempt.percentage}%",
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                     Text(
                         text = "${attempt.score}/${attempt.totalQuestions}",
                         fontSize = 16.sp,
-                        color = Color.White.copy(alpha = 0.9f)
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
                     )
                 }
             }
@@ -171,15 +171,15 @@ fun AttemptStatisticsCard(attempt: QuizAttempt) {
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            StatRow("Correct Answers", "${attempt.score}", Color(0xFF4CAF50))
+            StatRow("Correct Answers", "${attempt.score}", MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(8.dp))
 
             val incorrect = attempt.questionAnswers.count { !it.isCorrect }
-            StatRow("Incorrect Answers", "$incorrect", Color(0xFFF44336))
+            StatRow("Incorrect Answers", "$incorrect", MaterialTheme.colorScheme.error)
             Spacer(modifier = Modifier.height(8.dp))
 
             val unanswered = attempt.totalQuestions - attempt.questionAnswers.size
-            StatRow("Unanswered", "$unanswered", Color.Gray)
+            StatRow("Unanswered", "$unanswered", MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.height(8.dp))
 
             Divider()
@@ -207,15 +207,15 @@ fun QuestionAnswerCard(
     questionAnswer: com.dolphin.jetpack.domain.model.QuestionAnswer
 ) {
     val backgroundColor = if (questionAnswer.isCorrect) {
-        Color(0xFF4CAF50).copy(alpha = 0.1f)
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
     } else {
-        Color(0xFFF44336).copy(alpha = 0.1f)
+        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
     }
 
     val iconColor = if (questionAnswer.isCorrect) {
-        Color(0xFF4CAF50)
+        MaterialTheme.colorScheme.primary
     } else {
-        Color(0xFFF44336)
+        MaterialTheme.colorScheme.error
     }
 
     Card(
@@ -245,7 +245,7 @@ fun QuestionAnswerCard(
                     text = "Question $questionNumber",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -259,18 +259,18 @@ fun QuestionAnswerCard(
                     Text(
                         text = "Your answer: Option ${questionAnswer.selectedAnswer + 1}",
                         fontSize = 14.sp,
-                        color = Color(0xFFF44336)
+                        color = MaterialTheme.colorScheme.error
                     )
                     Text(
                         text = "Correct answer: Option ${questionAnswer.correctAnswer + 1}",
                         fontSize = 14.sp,
-                        color = Color(0xFF4CAF50)
+                        color = MaterialTheme.colorScheme.primary
                     )
                 } else {
                     Text(
                         text = "Correct! Option ${questionAnswer.correctAnswer + 1}",
                         fontSize = 14.sp,
-                        color = Color(0xFF4CAF50)
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }

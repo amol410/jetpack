@@ -1,23 +1,23 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    id("org.jetbrains.kotlin.plugin.compose")
-    id("com.google.devtools.ksp") version "2.0.21-1.0.27"
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.21"
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.google.gms.google.services)
     alias(libs.plugins.google.firebase.crashlytics)
 }
 
 android {
     namespace = "com.dolphin.jetpack"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.dolphin.jetpack"
         minSdk = 24
-        targetSdk = 36
-        versionCode = 2
-        versionName = "2.0"
+        targetSdk = 35
+        versionCode = 5
+        versionName = "5.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -46,7 +46,7 @@ android {
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.15"
+        kotlinCompilerExtensionVersion = "1.5.14"
     }
 }
 
@@ -64,6 +64,12 @@ dependencies {
     implementation(libs.firebase.messaging)
     implementation(libs.firebase.analytics)
 
+    // AdMob
+    implementation("com.google.android.gms:play-services-ads:23.6.0")
+
+    // DataStore for preferences
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+
     ksp("androidx.room:room-compiler:2.6.1")
 
     // Kotlinx Serialization for JSON
@@ -72,11 +78,16 @@ dependencies {
     // Retrofit for API calls
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.retrofit2:converter-moshi:2.9.0")
 
     // OkHttp for networking
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
+    // Moshi for JSON parsing
+    implementation("com.squareup.moshi:moshi:1.15.0")
+    implementation("com.squareup.moshi:moshi-kotlin:1.15.0")
+    
     // Gson for JSON parsing
     implementation("com.google.code.gson:gson:2.10.1")
 
@@ -106,4 +117,6 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+    
+
 }
