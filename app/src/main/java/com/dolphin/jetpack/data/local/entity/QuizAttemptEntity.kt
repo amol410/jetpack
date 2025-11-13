@@ -7,6 +7,7 @@ import androidx.room.PrimaryKey
 data class QuizAttemptEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+    val userId: String, // Firebase user ID
     val quizTitle: String,
     val dateTime: Long,
     val score: Int,

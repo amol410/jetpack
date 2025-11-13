@@ -92,3 +92,78 @@ data class SessionStartResponse(
 data class SessionEndRequest(
     val session_id: Int
 )
+
+// Quiz Data Models
+data class QuizAttemptRequest(
+    val firebase_uid: String,
+    val quiz_title: String,
+    val score: Int,
+    val total_questions: Int,
+    val time_taken_seconds: Long,
+    val percentage: Int,
+    val timer_enabled: Boolean = false,
+    val timer_minutes: Int = 0,
+    val question_answers: List<QuestionAnswerRequest> = emptyList()
+)
+
+data class QuestionAnswerRequest(
+    val question_index: Int,
+    val question_text: String,
+    val selected_answer: String,
+    val correct_answer: String,
+    val is_correct: Boolean
+)
+
+data class QuizAttemptData(
+    val attempt_id: Long? = null
+)
+
+data class QuizAttemptBackend(
+    val id: Long,
+    val quiz_title: String,
+    val date_time: String,
+    val score: Int,
+    val total_questions: Int,
+    val time_taken_seconds: Long,
+    val percentage: Int,
+    val timer_enabled: Boolean,
+    val timer_minutes: Int
+)
+
+data class QuizAttemptDetailData(
+    val attempt: QuizAttemptBackend,
+    val answers: List<QuestionAnswerBackend> = emptyList()
+)
+
+data class QuestionAnswerBackend(
+    val question_index: Int,
+    val question_text: String,
+    val selected_answer: String,
+    val correct_answer: String,
+    val is_correct: Boolean
+)
+
+data class StatisticsData(
+    val total_attempts: Int,
+    val average_score: Double,
+    val best_score: Int,
+    val quiz_wise_performance: List<QuizPerformanceBackend> = emptyList(),
+    val most_wrong_questions: List<WrongQuestionBackend> = emptyList(),
+    val improvement_data: List<ImprovementPointBackend> = emptyList()
+)
+
+data class QuizPerformanceBackend(
+    val quiz_title: String,
+    val attempt_count: Int,
+    val avg_score: Double
+)
+
+data class WrongQuestionBackend(
+    val question_text: String,
+    val wrong_count: Int
+)
+
+data class ImprovementPointBackend(
+    val timestamp: Long,
+    val score: Double
+)

@@ -1,0 +1,56 @@
+2025-11-07 00:38:49.376 20873-20873 libc                    com.dolphin.jetpack                  W  Access denied finding property "ro.odm.prev.product.name"
+2025-11-07 00:38:49.933 20873-20873 nativeloader            com.dolphin.jetpack                  D  Configuring clns-4 for other apk /data/app/~~JV-a0LzEFgd100b4AQktoQ==/com.dolphin.jetpack-_zKcxmais8TXIDWrUsoiBw==/base.apk. target_sdk_version=35, uses_libraries=, library_path=/data/app/~~JV-a0LzEFgd100b4AQktoQ==/com.dolphin.jetpack-_zKcxmais8TXIDWrUsoiBw==/lib/arm64:/data/app/~~JV-a0LzEFgd100b4AQktoQ==/com.dolphin.jetpack-_zKcxmais8TXIDWrUsoiBw==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.dolphin.jetpack
+2025-11-07 00:38:49.934 20873-20873 Quality                 com.dolphin.jetpack                  I  ActivityThread: createClassLoader delay 556 /data/app/~~JV-a0LzEFgd100b4AQktoQ==/com.dolphin.jetpack-_zKcxmais8TXIDWrUsoiBw==/base.apk 20873
+2025-11-07 00:38:49.936 20873-20873 Quality                 com.dolphin.jetpack                  I  ActivityThread: createOrUpdateClassLoaderLocked delay 559 com.dolphin.jetpack 20873
+2025-11-07 00:38:49.943 20873-20873 nativeloader            com.dolphin.jetpack                  D  Load libframework-connectivity-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity.jar: ok
+2025-11-07 00:38:49.948 20873-20873 GraphicsEnvironment     com.dolphin.jetpack                  V  Currently set values for:
+2025-11-07 00:38:49.948 20873-20873 GraphicsEnvironment     com.dolphin.jetpack                  V    angle_gl_driver_selection_pkgs=[]
+2025-11-07 00:38:49.948 20873-20873 GraphicsEnvironment     com.dolphin.jetpack                  V    angle_gl_driver_selection_values=[]
+2025-11-07 00:38:49.948 20873-20873 GraphicsEnvironment     com.dolphin.jetpack                  V  ANGLE GameManagerService for com.dolphin.jetpack: false
+2025-11-07 00:38:49.948 20873-20873 GraphicsEnvironment     com.dolphin.jetpack                  V  com.dolphin.jetpack is not listed in per-application setting
+2025-11-07 00:38:49.948 20873-20873 GraphicsEnvironment     com.dolphin.jetpack                  V  Neither updatable production driver nor prerelease driver is supported.
+2025-11-07 00:38:49.953 20873-20873 ResourcesManagerExtImpl com.dolphin.jetpack                  D  applyConfigurationToAppResourcesLocked app.getDisplayId() return callback.displayId:-1
+2025-11-07 00:38:49.956 20873-20873 AndroidRuntime          com.dolphin.jetpack                  D  Shutting down VM
+2025-11-07 00:38:49.956 20873-20873 AndroidRuntime          com.dolphin.jetpack                  E  FATAL EXCEPTION: main (Ask Gemini)
+                                                                                                    Process: com.dolphin.jetpack, PID: 20873
+                                                                                                    java.lang.RuntimeException: Unable to get provider com.google.android.gms.ads.MobileAdsInitProvider: java.lang.IllegalStateException: 
+                                                                                                    
+                                                                                                    ******************************************************************************
+                                                                                                    * Invalid application ID. Follow instructions here:                          *
+                                                                                                    * https://googlemobileadssdk.page.link/admob-android-update-manifest         *
+                                                                                                    * to find your app ID.                                                       *
+                                                                                                    * Google Ad Manager publishers should follow instructions here:              *
+                                                                                                    * https://googlemobileadssdk.page.link/ad-manager-android-update-manifest.   *
+                                                                                                    ******************************************************************************
+                                                                                                    
+                                                                                                    
+                                                                                                    	at android.app.ActivityThread.installProvider(ActivityThread.java:8383)
+                                                                                                    	at android.app.ActivityThread.installContentProviders(ActivityThread.java:7889)
+                                                                                                    	at android.app.ActivityThread.handleBindApplication(ActivityThread.java:7576)
+                                                                                                    	at android.app.ActivityThread.-$$Nest$mhandleBindApplication(Unknown Source:0)
+                                                                                                    	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2428)
+                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:106)
+                                                                                                    	at android.os.Looper.loopOnce(Looper.java:257)
+                                                                                                    	at android.os.Looper.loop(Looper.java:368)
+                                                                                                    	at android.app.ActivityThread.main(ActivityThread.java:8839)
+                                                                                                    	at java.lang.reflect.Method.invoke(Native Method)
+                                                                                                    	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:572)
+                                                                                                    	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1049)
+                                                                                                    Caused by: java.lang.IllegalStateException: 
+                                                                                                    
+                                                                                                    ******************************************************************************
+                                                                                                    * Invalid application ID. Follow instructions here:                          *
+                                                                                                    * https://googlemobileadssdk.page.link/admob-android-update-manifest         *
+                                                                                                    * to find your app ID.                                                       *
+                                                                                                    * Google Ad Manager publishers should follow instructions here:              *
+                                                                                                    * https://googlemobileadssdk.page.link/ad-manager-android-update-manifest.   *
+                                                                                                    ******************************************************************************
+                                                                                                    
+                                                                                                    
+                                                                                                    	at com.google.android.gms.ads.internal.client.zzek.attachInfo(com.google.android.gms:play-services-ads-lite@@22.6.0:15)
+                                                                                                    	at com.google.android.gms.ads.MobileAdsInitProvider.attachInfo(com.google.android.gms:play-services-ads-lite@@22.6.0:1)
+                                                                                                    	at android.app.ActivityThread.installProvider(ActivityThread.java:8378)
+                                                                                                    	... 11 more
+2025-11-07 00:38:49.973  2112-3303  UAH_JNI                 system_server                        E  uah_event_acquire ! cmdId: 0 ,strPkg: com.dolphin.jetpack, strIdent: com.android.server.wm, timeout: 600
+2025-11-07 00:38:49.984 20873-20873 Process                 com.dolphin.jetpack                  I  Sending signal. PID: 20873 SIG: 9
+---------------------------- PROCESS ENDED (20873) for package com.dolphin.jetpack ----------------------------

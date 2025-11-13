@@ -37,4 +37,9 @@ interface QuizRepository {
 
     // Export
     suspend fun exportToCSV(): String
+
+    // Remote sync operations
+    suspend fun syncQuizAttempt(firebaseUid: String, attempt: QuizAttempt): Result<Long>
+    suspend fun syncAllQuizAttempts(firebaseUid: String): Result<List<QuizAttempt>>
+    suspend fun syncUserStatistics(firebaseUid: String): Result<QuizStatistics>
 }

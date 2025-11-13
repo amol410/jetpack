@@ -10,8 +10,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class QuizListViewModel : ViewModel() {
-    private val repository = ContentRepository()
+class QuizListViewModel(
+    private val repository: ContentRepository
+) : ViewModel() {
 
     private val _quizzes = MutableStateFlow<List<Quiz>>(emptyList())
     val quizzes: StateFlow<List<Quiz>> = _quizzes.asStateFlow()
@@ -21,6 +22,10 @@ class QuizListViewModel : ViewModel() {
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
+
+    // Download progress tracking
+    private val _downloadingQuizzes = MutableStateFlow<Set<Int>>(emptySet())
+    val downloadingQuizzes: StateFlow<Set<Int>> = _downloadingQuizzes.asStateFlow()
 
     init {
         loadQuizzes()
@@ -37,19 +42,9 @@ class QuizListViewModel : ViewModel() {
                 }
                 is NetworkResult.Error -> {
                     _error.value = result.message
-                    // Fallback to local data if available - need to convert from QuestionData to domain models
-                    _quizzes.value = com.dolphin.jetpack.DataProvider.quizList.map { questionDataQuiz ->
-                        com.dolphin.jetpack.domain.model.Quiz(
-                            title = questionDataQuiz.title,
-                            questions = questionDataQuiz.questions.map { questionDataQuestion ->
-                                com.dolphin.jetpack.domain.model.Question(
-                                    text = questionDataQuestion.text,
-                                    options = questionDataQuestion.options,
-                                    correctAnswerIndex = questionDataQuestion.correctAnswerIndex
-                                )
-                            }
-                        )
-                    }
+                    // Try to load offline cached quizzes if available
+                    // The first 3 quizzes should be auto-cached
+                    _quizzes.value = emptyList() // Let offline cached quizzes be shown if any
                 }
                 is NetworkResult.Loading -> {
                     // Already handled by _isLoading
@@ -62,5 +57,33 @@ class QuizListViewModel : ViewModel() {
 
     fun retry() {
         loadQuizzes()
+    }
+
+    fun toggleQuizOffline(quizId: Int, quizTitle: String, makeOffline: Boolean) {
+        viewModelScope.launch {
+            try {
+                if (makeOffline) {
+                    // Add to downloading set
+                    _downloadingQuizzes.value = _downloadingQuizzes.value + quizId
+                }
+
+                repository.toggleQuizOffline(quizId, quizTitle, makeOffline)
+
+                // Remove from downloading set
+                _downloadingQuizzes.value = _downloadingQuizzes.value - quizId
+            } catch (e: Exception) {
+                // Remove from downloading set on error
+                _downloadingQuizzes.value = _downloadingQuizzes.value - quizId
+                _error.value = "Failed to toggle offline status: ${e.message}"
+            }
+        }
+    }
+
+    suspend fun isQuizOffline(quizId: Int): Boolean {
+        return repository.isQuizOffline(quizId)
+    }
+
+    suspend fun isQuizManuallyDownloaded(quizId: Int): Boolean {
+        return repository.isQuizManuallyDownloaded(quizId)
     }
 }

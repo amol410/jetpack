@@ -33,4 +33,22 @@ interface ApiService {
 
     @GET("get_user_stats.php")
     suspend fun getUserStats(@Query("firebase_uid") firebaseUid: String): Response<ApiResponse<Any>>
+
+    // Quiz data APIs
+    @POST("save_quiz_attempt.php")
+    suspend fun saveQuizAttempt(@Body request: QuizAttemptRequest): Response<ApiResponse<QuizAttemptData>>
+
+    @GET("get_user_quiz_attempts.php")
+    suspend fun getUserQuizAttempts(
+        @Query("firebase_uid") firebaseUid: String,
+        @Query("quiz_title") quizTitle: String? = null,
+        @Query("limit") limit: Int? = null,
+        @Query("offset") offset: Int? = null
+    ): Response<ApiResponse<List<QuizAttemptBackend>>>
+
+    @GET("get_quiz_attempt_detail.php")
+    suspend fun getQuizAttemptDetail(@Query("attempt_id") attemptId: Long): Response<ApiResponse<QuizAttemptDetailData>>
+
+    @GET("get_user_statistics.php")
+    suspend fun getUserStatistics(@Query("firebase_uid") firebaseUid: String): Response<ApiResponse<StatisticsData>>
 }

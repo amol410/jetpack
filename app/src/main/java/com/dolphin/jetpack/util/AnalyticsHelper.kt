@@ -41,7 +41,13 @@ object AnalyticsHelper {
             putLong("score", score.toLong())
             putLong("total_questions", totalQuestions.toLong())
             putLong("time_taken_seconds", timeTaken)
-            putLong("percentage", ((score.toDouble() / totalQuestions) * 100).toLong())
+            // Prevent division by zero
+            val percentage = if (totalQuestions > 0) {
+                ((score.toDouble() / totalQuestions) * 100).toLong()
+            } else {
+                0L
+            }
+            putLong("percentage", percentage)
         }
         analytics?.logEvent("quiz_completed", bundle)
     }

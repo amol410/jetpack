@@ -38,6 +38,37 @@ class AuthViewModel : ViewModel() {
         checkAuthState()
     }
 
+    // Convert technical error messages to user-friendly ones
+    private fun getUserFriendlyErrorMessage(exception: Exception): String {
+        val message = exception.message?.lowercase() ?: ""
+
+        return when {
+            // Network errors
+            message.contains("network") ||
+            message.contains("unable to resolve host") ||
+            message.contains("timeout") ||
+            message.contains("connection") ||
+            message.contains("socket") -> "Please check your internet connection and try again"
+
+            // Firebase Auth errors
+            message.contains("invalid-email") -> "Please enter a valid email address"
+            message.contains("user-disabled") -> "This account has been disabled"
+            message.contains("user-not-found") -> "No account found with this email"
+            message.contains("wrong-password") -> "Incorrect password. Please try again"
+            message.contains("email-already-in-use") -> "An account with this email already exists"
+            message.contains("weak-password") -> "Please choose a stronger password"
+            message.contains("too-many-requests") -> "Too many attempts. Please try again later"
+            message.contains("credential") -> "Authentication failed. Please try again"
+
+            // Google Sign-In errors
+            message.contains("api") -> "Unable to connect to Google. Please check your internet connection"
+            message.contains("developer") -> "Sign-in is temporarily unavailable. Please try again later"
+
+            // Generic fallback
+            else -> "Something went wrong. Please try again"
+        }
+    }
+
     private fun checkAuthState() {
         val currentUser = auth.currentUser
         _authState.value = if (currentUser != null) {
@@ -83,8 +114,8 @@ class AuthViewModel : ViewModel() {
                         _authState.value = AuthState.Unauthenticated
                     }
                     else -> {
-                        // Actual error occurred
-                        _authState.value = AuthState.Error("Sign-in failed: ${e.message}")
+                        // Actual error occurred - show user-friendly message
+                        _authState.value = AuthState.Error(getUserFriendlyErrorMessage(e))
                     }
                 }
             }
@@ -108,17 +139,17 @@ class AuthViewModel : ViewModel() {
                             AnalyticsHelper.setUserProperties(user.uid, user.email)
                             _authState.value = AuthState.Authenticated(user)
                         } ?: run {
-                            _authState.value = AuthState.Error("Authentication failed")
+                            _authState.value = AuthState.Error("Unable to sign in. Please try again")
                         }
                     } catch (e: GoogleIdTokenParsingException) {
-                        _authState.value = AuthState.Error("Invalid Google ID token: ${e.message}")
+                        _authState.value = AuthState.Error(getUserFriendlyErrorMessage(e))
                     }
                 } else {
-                    _authState.value = AuthState.Error("Unexpected credential type")
+                    _authState.value = AuthState.Error("Sign-in is temporarily unavailable. Please try again")
                 }
             }
             else -> {
-                _authState.value = AuthState.Error("Unexpected credential type")
+                _authState.value = AuthState.Error("Sign-in is temporarily unavailable. Please try again")
             }
         }
     }
@@ -146,10 +177,10 @@ class AuthViewModel : ViewModel() {
                     AnalyticsHelper.setUserProperties(user.uid, user.email)
                     _authState.value = AuthState.Authenticated(user)
                 } ?: run {
-                    _authState.value = AuthState.Error("Sign-up failed")
+                    _authState.value = AuthState.Error("Unable to create account. Please try again")
                 }
             } catch (e: Exception) {
-                _authState.value = AuthState.Error("Sign-up error: ${e.message}")
+                _authState.value = AuthState.Error(getUserFriendlyErrorMessage(e))
             }
         }
     }
@@ -172,10 +203,10 @@ class AuthViewModel : ViewModel() {
                     AnalyticsHelper.setUserProperties(user.uid, user.email)
                     _authState.value = AuthState.Authenticated(user)
                 } ?: run {
-                    _authState.value = AuthState.Error("Sign-in failed")
+                    _authState.value = AuthState.Error("Unable to sign in. Please try again")
                 }
             } catch (e: Exception) {
-                _authState.value = AuthState.Error("Sign-in error: ${e.message}")
+                _authState.value = AuthState.Error(getUserFriendlyErrorMessage(e))
             }
         }
     }
@@ -192,7 +223,7 @@ class AuthViewModel : ViewModel() {
                 auth.sendPasswordResetEmail(email).await()
                 onSuccess()
             } catch (e: Exception) {
-                _authState.value = AuthState.Error("Password reset error: ${e.message}")
+                _authState.value = AuthState.Error(getUserFriendlyErrorMessage(e))
             }
         }
     }
@@ -200,6 +231,8 @@ class AuthViewModel : ViewModel() {
     fun signOut() {
         auth.signOut()
         _authState.value = AuthState.Unauthenticated
+        // Update repository with null user ID
+        com.dolphin.jetpack.AppModule.updateCurrentUser(null)
     }
 
     fun clearError() {

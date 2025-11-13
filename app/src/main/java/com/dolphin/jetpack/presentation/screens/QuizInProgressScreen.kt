@@ -82,11 +82,16 @@ fun QuizInProgressScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("${quiz.title}")
+                        Text(
+                            "${quiz.title}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
                         Text(
                             "Question ${currentQuestionIndex + 1} of ${quiz.questions.size}",
                             fontSize = 14.sp,
-                            fontWeight = FontWeight.Normal
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
@@ -99,10 +104,16 @@ fun QuizInProgressScreen(
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (timeRemaining < 60) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.titleLarge,
                             modifier = Modifier.padding(end = 16.dp)
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             )
         }
     ) { padding ->
@@ -117,22 +128,39 @@ fun QuizInProgressScreen(
                 modifier = Modifier.weight(1f)
             ) {
                 // Progress indicator
-                LinearProgressIndicator(
-                    progress = (currentQuestionIndex + 1).toFloat() / quiz.questions.size,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    LinearProgressIndicator(
+                        progress = (currentQuestionIndex + 1).toFloat() / quiz.questions.size,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(8.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "${currentQuestionIndex + 1}/${quiz.questions.size}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Question
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(4.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Text(
                         text = currentQuestion.text,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(20.dp)
                     )
                 }
@@ -152,8 +180,9 @@ fun QuizInProgressScreen(
                                 onClick = { selectedOption = index }
                             ),
                         elevation = CardDefaults.cardElevation(
-                            defaultElevation = if (isSelected) 8.dp else 2.dp
+                            defaultElevation = if (isSelected) 6.dp else 2.dp
                         ),
+                        shape = MaterialTheme.shapes.small,
                         colors = CardDefaults.cardColors(
                             containerColor = if (isSelected)
                                 MaterialTheme.colorScheme.primaryContainer
@@ -164,7 +193,7 @@ fun QuizInProgressScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             RadioButton(
@@ -175,7 +204,9 @@ fun QuizInProgressScreen(
                             Text(
                                 text = option,
                                 fontSize = 16.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
                             )
                         }
                     }
@@ -194,9 +225,13 @@ fun QuizInProgressScreen(
                             selectedOption = answers[currentQuestionIndex]
                         }
                     },
-                    enabled = currentQuestionIndex > 0
+                    enabled = currentQuestionIndex > 0,
+                    shape = MaterialTheme.shapes.extraSmall
                 ) {
-                    Text("Previous")
+                    Text(
+                        "Previous",
+                        fontWeight = FontWeight.Medium
+                    )
                 }
 
                 Button(
@@ -216,10 +251,12 @@ fun QuizInProgressScreen(
                             onQuizFinished(answers, timeTaken)
                         }
                     },
-                    enabled = selectedOption != null
+                    enabled = selectedOption != null,
+                    shape = MaterialTheme.shapes.extraSmall
                 ) {
                     Text(
-                        if (currentQuestionIndex == quiz.questions.size - 1) "Finish" else "Next"
+                        if (currentQuestionIndex == quiz.questions.size - 1) "Finish" else "Next",
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }

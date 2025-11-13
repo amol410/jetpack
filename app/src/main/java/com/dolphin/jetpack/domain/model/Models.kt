@@ -1,5 +1,7 @@
 package com.dolphin.jetpack.domain.model
 
+import kotlinx.serialization.Serializable
+
 data class QuizAttempt(
     val id: Long = 0,
     val quizTitle: String,
@@ -14,10 +16,13 @@ data class QuizAttempt(
 )
 // In a file like domain/model/Quiz.kt
 data class Quiz(
+    val id: Int,
     val title: String,
-    val questions: List<Question>
+    val questions: List<Question> = emptyList(), // Empty for metadata-only, populated when loaded
+    val questionCount: Int = questions.size // For displaying before full load
 )
 
+@Serializable
 data class Question(
     val text: String,
     val options: List<String>,
@@ -86,6 +91,7 @@ data class Chapter(
     val completionPercentage: Int = 0
 )
 
+@Serializable
 data class Topic(
     val id: Int,
     val chapterId: Int,

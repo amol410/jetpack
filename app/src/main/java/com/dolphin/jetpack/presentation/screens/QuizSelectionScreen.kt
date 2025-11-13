@@ -6,9 +6,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,22 +31,44 @@ fun QuizSelectionScreen(
     onQuizSelected: (Quiz, Boolean, Int) -> Unit,
     hasResumeState: Map<String, Boolean>,
     onResumeQuiz: (Quiz) -> Unit,
-    onSignOut: () -> Unit = {},
-    quizListViewModel: QuizListViewModel = viewModel()
+    onSettingsClick: () -> Unit = {},
+    quizListViewModel: QuizListViewModel
 ) {
     var showTimerDialog by remember { mutableStateOf(false) }
     var selectedQuiz by remember { mutableStateOf<Quiz?>(null) }
-    var showSignOutDialog by remember { mutableStateOf(false) }
 
     // Observe ViewModel state
     val quizzes by quizListViewModel.quizzes.collectAsState()
     val isLoading by quizListViewModel.isLoading.collectAsState()
     val error by quizListViewModel.error.collectAsState()
 
+    // Track offline status for each quiz
+    var offlineStatusMap by remember { mutableStateOf<Map<Int, Boolean>>(emptyMap()) }
+
+    // Track downloading quizzes
+    val downloadingQuizzes by quizListViewModel.downloadingQuizzes.collectAsState()
+
+    // Load manually downloaded status for all quizzes
+    LaunchedEffect(quizzes) {
+        if (quizzes.isNotEmpty()) {
+            val statusMap = mutableMapOf<Int, Boolean>()
+            quizzes.forEach { quiz ->
+                statusMap[quiz.id] = quizListViewModel.isQuizManuallyDownloaded(quiz.id)
+            }
+            offlineStatusMap = statusMap
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Select Quiz") },
+                title = { 
+                    Text(
+                        "Select Quiz", 
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold
+                    ) 
+                },
                 actions = {
                     // Retry button when there's an error
                     if (error != null) {
@@ -54,13 +79,18 @@ fun QuizSelectionScreen(
                             )
                         }
                     }
-                    IconButton(onClick = { showSignOutDialog = true }) {
+                    IconButton(onClick = onSettingsClick) {
                         Icon(
-                            Icons.Default.Logout,
-                            contentDescription = "Sign Out"
+                            Icons.Default.Settings,
+                            contentDescription = "Settings"
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             )
         }
     ) { padding ->
@@ -114,16 +144,25 @@ fun QuizSelectionScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(quizzes) { quiz ->
+                    items(quizzes.size) { index ->
+                        val quiz = quizzes[index]
                         QuizCard(
                             quiz = quiz,
+                            quizId = quiz.id,
                             hasResumeState = hasResumeState[quiz.title] == true,
+                            isOffline = offlineStatusMap[quiz.id] ?: false,
+                            isDownloading = downloadingQuizzes.contains(quiz.id),
                             onQuizClick = {
                                 selectedQuiz = quiz
                                 showTimerDialog = true
                             },
                             onResumeClick = {
                                 onResumeQuiz(quiz)
+                            },
+                            onOfflineToggle = { id, makeOffline ->
+                                quizListViewModel.toggleQuizOffline(id, quiz.title, makeOffline)
+                                // Update local state immediately for responsiveness
+                                offlineStatusMap = offlineStatusMap + (id to makeOffline)
                             }
                         )
                     }
@@ -133,15 +172,25 @@ fun QuizSelectionScreen(
     }
 
     if (showTimerDialog && selectedQuiz != null) {
-        val totalQuestions = selectedQuiz!!.questions.size
+        val totalQuestions = selectedQuiz!!.questionCount
         var selectedMinutes by remember { mutableIntStateOf(10) } // Default to 10 minutes
         
         AlertDialog(
             onDismissRequest = { showTimerDialog = false },
-            title = { Text("Start Quiz", fontWeight = FontWeight.Bold) },
+            title = { 
+                Text(
+                    "Start Quiz", 
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold
+                ) 
+            },
             text = {
                 Column {
-                    Text("How much time do you need to solve $totalQuestions questions?", fontWeight = FontWeight.Medium)
+                    Text(
+                        "How much time do you need to solve $totalQuestions questions?", 
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
                     Column {
                         listOf(10, 20, 30).forEach { minutes ->
@@ -149,7 +198,7 @@ fun QuizSelectionScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { selectedMinutes = minutes }
-                                    .padding(vertical = 4.dp),
+                                    .padding(vertical = 8.dp, horizontal = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 RadioButton(
@@ -159,6 +208,7 @@ fun QuizSelectionScreen(
                                 Text(
                                     text = "$minutes minutes",
                                     fontSize = 16.sp,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier.padding(start = 8.dp)
                                 )
                             }
@@ -175,13 +225,15 @@ fun QuizSelectionScreen(
                         onClick = {
                             showTimerDialog = false
                             onQuizSelected(selectedQuiz!!, true, selectedMinutes) // Always use timer with selected minutes
-                        }
+                        },
+                        shape = MaterialTheme.shapes.extraSmall
                     ) {
-                        Text("START QUIZ", fontWeight = FontWeight.Bold)
+                        Text("START QUIZ", fontWeight = FontWeight.Medium)
                     }
                 }
             },
-            dismissButton = null // Remove the dismiss button (No Timer option)
+            dismissButton = null, // Remove the dismiss button (No Timer option)
+            shape = MaterialTheme.shapes.medium
         )
         
         // Update the selectedQuiz's timerMinutes when the minutes change
@@ -190,75 +242,130 @@ fun QuizSelectionScreen(
         }
     }
 
-    if (showSignOutDialog) {
-        AlertDialog(
-            onDismissRequest = { showSignOutDialog = false },
-            icon = {
-                Icon(
-                    Icons.Default.Logout,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            },
-            title = { Text("Sign Out") },
-            text = { Text("Are you sure you want to sign out?") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showSignOutDialog = false
-                        onSignOut()
-                    }
-                ) {
-                    Text("Sign Out")
-                }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { showSignOutDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
+
 }
 
 @Composable
 fun QuizCard(
     quiz: Quiz,
+    quizId: Int,
     hasResumeState: Boolean,
+    isOffline: Boolean,
+    isDownloading: Boolean = false,
     onQuizClick: () -> Unit,
-    onResumeClick: () -> Unit
+    onResumeClick: () -> Unit,
+    onOfflineToggle: (Int, Boolean) -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onQuizClick),
-        elevation = CardDefaults.cardElevation(4.dp)
+            .clickable(onClick = onQuizClick)
+            .padding(vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        shape = MaterialTheme.shapes.medium
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
         ) {
-            Text(
-                text = quiz.title,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "${quiz.questions.size} questions",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = quiz.title,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge,
+                    maxLines = 2,
+                    modifier = Modifier.weight(1f)
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Offline toggle button with progress
+                    Box(
+                        contentAlignment = Alignment.Center
+                    ) {
+                        // Show circular progress indicator while downloading
+                        if (isDownloading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(40.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                strokeWidth = 3.dp
+                            )
+                        }
+
+                        IconButton(
+                            onClick = {
+                                if (!isDownloading) {
+                                    onOfflineToggle(quizId, !isOffline)
+                                }
+                            },
+                            enabled = !isDownloading
+                        ) {
+                            Icon(
+                                imageVector = when {
+                                    isDownloading -> Icons.Default.CloudDownload
+                                    isOffline -> Icons.Default.CloudDone
+                                    else -> Icons.Default.CloudDownload
+                                },
+                                contentDescription = when {
+                                    isDownloading -> "Downloading..."
+                                    isOffline -> "Remove from offline"
+                                    else -> "Save for offline"
+                                },
+                                tint = when {
+                                    isDownloading -> MaterialTheme.colorScheme.primary
+                                    isOffline -> MaterialTheme.colorScheme.primary
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                        }
+                    }
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Timer,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "${quiz.questionCount} questions",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
 
             if (hasResumeState) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = onResumeClick,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    )
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ),
+                    shape = MaterialTheme.shapes.extraSmall
                 ) {
-                    Text("Resume Quiz")
+                    Text(
+                        "Resume Quiz",
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
         }

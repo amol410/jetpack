@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -162,8 +163,8 @@ fun LessonNotesScreen(
                         // Fallback to topic content if no notes are available
                         if (error != null) {
                             Text(
-                                text = "Failed to load notes. Showing topic description.",
-                                color = MaterialTheme.colorScheme.error,
+                                text = "No notes available. Showing topic description.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 14.sp,
                                 modifier = Modifier.padding(bottom = 12.dp)
                             )
@@ -194,8 +195,41 @@ fun LessonNotesScreen(
                         }
                     }
 
-                    // Bottom spacing
-                    Spacer(modifier = Modifier.height(24.dp))
+                    // Bottom spacing to account for offline indicator
+                    Spacer(modifier = Modifier.height(if (error != null && notes.isNotEmpty()) 60.dp else 24.dp))
+                }
+
+                // Offline indicator at the bottom
+                if (error != null && notes.isNotEmpty()) {
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        tonalElevation = 4.dp
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CloudDone,
+                                contentDescription = "Offline",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Using offline data",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -208,7 +242,7 @@ fun LessonNotesScreen(
                 .size(48.dp)
                 .zIndex(10f)
                 .clip(CircleShape)
-                .background(Color(0xFF2196F3).copy(alpha = 0.5f)),
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
             contentAlignment = Alignment.Center
         ) {
             IconButton(
@@ -218,7 +252,7 @@ fun LessonNotesScreen(
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Back",
-                    tint = Color.White.copy(alpha = 0.8f),
+                    tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
                     modifier = Modifier.size(28.dp)
                 )
             }

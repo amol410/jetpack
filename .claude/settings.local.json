@@ -16,7 +16,14 @@
       "Bash(git tag:*)",
       "Bash(git restore:*)",
       "Bash(curl:*)",
-      "Bash(.gradlew.bat assembleDebug:*)"
+      "Bash(.gradlew.bat assembleDebug:*)",
+      "Bash(./gradlew.bat assembleDebug)",
+      "Bash(findstr:*)",
+      "Bash(./gradlew.bat clean:*)",
+      "Bash(timeout 10 dir:*)",
+      "Bash(nul)",
+      "Bash(del /f \"C:\\Users\\Admin\\AndroidStudioProjects\\Jetpack\\app\\build\\outputs\\apk\\debug\\nul\" 2)",
+      "Bash(del /f nul 2)"
     ],
     "deny": [],
     "ask": []

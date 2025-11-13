@@ -36,6 +36,8 @@ import com.dolphin.jetpack.presentation.viewmodel.AuthState
 import com.dolphin.jetpack.presentation.viewmodel.AuthViewModel
 import com.dolphin.jetpack.presentation.viewmodel.HistoryViewModel
 import com.dolphin.jetpack.presentation.viewmodel.NotesViewModel
+import com.dolphin.jetpack.presentation.viewmodel.QuizListState
+import com.dolphin.jetpack.presentation.viewmodel.QuizListViewModel
 import com.dolphin.jetpack.presentation.viewmodel.QuizUiState
 import com.dolphin.jetpack.presentation.viewmodel.QuizViewModel
 import com.dolphin.jetpack.presentation.viewmodel.StatisticsViewModel
@@ -218,10 +220,14 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
         }
     }
 
-    // Check for resume states
-    LaunchedEffect(Unit) {
-        val quizTitles = com.dolphin.jetpack.DataProvider.quizList.map { it.title }
-        quizViewModel.checkResumeStates(quizTitles)
+    // Check for resume states - observe quiz list state
+    val quizListState by quizViewModel.quizListState.collectAsState()
+    LaunchedEffect(quizListState) {
+        if (quizListState is QuizListState.Success) {
+            val quizzes = (quizListState as QuizListState.Success).quizzes
+            val quizTitles = quizzes.map { it.title }
+            quizViewModel.checkResumeStates(quizTitles)
+        }
     }
 
     BackHandler(enabled = currentScreen != Screen.QuizSelection && selectedBottomNav == BottomNavItem.Quizzes) {
@@ -312,71 +318,83 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                 }
 
                 Screen.QuizInProgress -> {
-                    // Get activity context for ad showing
-                    val activityContext = androidx.compose.ui.platform.LocalContext.current as? android.app.Activity
-                    QuizInProgressScreen(
-                        modifier = Modifier.fillMaxSize(),
-                        quiz = selectedQuiz!!,
-                        timerEnabled = timerEnabled,
-                        timerMinutes = timerMinutes,
-                        viewModel = quizViewModel,
-                        onQuizFinished = { answers, timeTaken ->
-                            userAnswers = answers
+                    selectedQuiz?.let { quiz ->
+                        // Get activity context for ad showing
+                        val activityContext = androidx.compose.ui.platform.LocalContext.current as? android.app.Activity
+                        QuizInProgressScreen(
+                            modifier = Modifier.fillMaxSize(),
+                            quiz = quiz,
+                            timerEnabled = timerEnabled,
+                            timerMinutes = timerMinutes,
+                            viewModel = quizViewModel,
+                            onQuizFinished = { answers, timeTaken ->
+                                userAnswers = answers
 
-                            // Save quiz attempt
-                            val questions = selectedQuiz!!.questions
-                            val correctCount = answers.count { (index, answer) ->
-                                questions[index].correctAnswerIndex == answer
-                            }
+                                // Save quiz attempt
+                                val questions = quiz.questions
+                                val correctCount = answers.count { (index, answer) ->
+                                    questions.getOrNull(index)?.correctAnswerIndex == answer
+                                }
 
-                            val questionAnswers = answers.map { (index, answer) ->
-                                QuestionAnswer(
-                                    attemptId = 0L,
-                                    questionIndex = index,
-                                    questionText = questions[index].text,
-                                    selectedAnswer = answer,
-                                    correctAnswer = questions[index].correctAnswerIndex,
-                                    isCorrect = questions[index].correctAnswerIndex == answer
+                                val questionAnswers = answers.mapNotNull { (index, answer) ->
+                                    questions.getOrNull(index)?.let { question ->
+                                        QuestionAnswer(
+                                            attemptId = 0L,
+                                            questionIndex = index,
+                                            questionText = question.text,
+                                            selectedAnswer = answer,
+                                            correctAnswer = question.correctAnswerIndex,
+                                            isCorrect = question.correctAnswerIndex == answer
+                                        )
+                                    }
+                                }
+
+                                // Save quiz attempt
+                                quizViewModel.saveQuizAttempt(
+                                    quizTitle = quiz.title,
+                                    score = correctCount,
+                                    totalQuestions = questions.size,
+                                    timeTakenSeconds = timeTaken,
+                                    timerEnabled = timerEnabled,
+                                    timerMinutes = timerMinutes,
+                                    questionAnswers = questionAnswers
                                 )
-                            }
 
-                            // Save quiz attempt
-                            quizViewModel.saveQuizAttempt(
-                                quizTitle = selectedQuiz!!.title,
-                                score = correctCount,
-                                totalQuestions = questions.size,
-                                timeTakenSeconds = timeTaken,
-                                timerEnabled = timerEnabled,
-                                timerMinutes = timerMinutes,
-                                questionAnswers = questionAnswers
-                            )
-
-                            // Show interstitial ad before navigating to results
-                            activityContext?.let { activity ->
-                                quizViewModel.showInterstitialAd(activity) {
-                                    // After ad is dismissed (or if no ad available), navigate to results
+                                // Show interstitial ad before navigating to results
+                                activityContext?.let { activity ->
+                                    quizViewModel.showInterstitialAd(activity) {
+                                        // After ad is dismissed (or if no ad available), navigate to results
+                                        currentScreen = Screen.QuizResult
+                                    }
+                                } ?: run {
+                                    // If no activity context, navigate directly
                                     currentScreen = Screen.QuizResult
                                 }
-                            } ?: run {
-                                // If no activity context, navigate directly
-                                currentScreen = Screen.QuizResult
                             }
-                        }
-                    )
+                        )
+                    } ?: run {
+                        // If selectedQuiz is null, navigate back to selection
+                        currentScreen = Screen.QuizSelection
+                    }
                 }
 
                 Screen.QuizResult -> {
-                    QuizResultScreen(
-                        modifier = Modifier.fillMaxSize(),
-                        quiz = selectedQuiz!!,
-                        userAnswers = userAnswers,
-                        onBackToSelection = {
-                            currentScreen = Screen.QuizSelection
-                            selectedQuiz = null
-                            userAnswers = emptyMap()
-                            statsViewModel.refresh()
-                        }
-                    )
+                    selectedQuiz?.let { quiz ->
+                        QuizResultScreen(
+                            modifier = Modifier.fillMaxSize(),
+                            quiz = quiz,
+                            userAnswers = userAnswers,
+                            onBackToSelection = {
+                                currentScreen = Screen.QuizSelection
+                                selectedQuiz = null
+                                userAnswers = emptyMap()
+                                statsViewModel.refresh()
+                            }
+                        )
+                    } ?: run {
+                        // If selectedQuiz is null, navigate back to selection
+                        currentScreen = Screen.QuizSelection
+                    }
                 }
 
                 Screen.LessonNotes -> {
@@ -410,8 +428,15 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                         when (page) {
                             0 -> {
                                 // Notes tab - Lazy loading with optimistic UI
-                                val notesViewModel = remember { com.dolphin.jetpack.presentation.viewmodel.NotesViewModel() }
-                                
+                                val notesViewModel: NotesViewModel = viewModel(
+                                    factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                                        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                                            @Suppress("UNCHECKED_CAST")
+                                            return AppModule.provideNotesViewModel() as T
+                                        }
+                                    }
+                                )
+
                                 // Load content when screen is accessed
                                 LaunchedEffect(currentScreen) {
                                     if (currentScreen == Screen.Notes) {
@@ -429,37 +454,58 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                                     onContinueLesson = { topic ->
                                         selectedTopic = topic
                                         currentScreen = Screen.LessonNotes
-                                    }
+                                    },
+                                    notesViewModel = notesViewModel
                                 )
                             }
                             1 -> {
                                 // Quizzes tab - Lazy loading with optimistic UI
-                                
+                                val quizListViewModel: QuizListViewModel = viewModel(
+                                    factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                                        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                                            @Suppress("UNCHECKED_CAST")
+                                            return AppModule.provideQuizListViewModel() as T
+                                        }
+                                    }
+                                )
+
                                 // Check resume states when screen is accessed (lazy loading)
-                                LaunchedEffect(currentScreen) {
-                                    if (currentScreen == Screen.QuizSelection) {
-                                        val quizTitles = com.dolphin.jetpack.DataProvider.quizList.map { it.title }
+                                val quizzesFromList by quizListViewModel.quizzes.collectAsState()
+                                LaunchedEffect(currentScreen, quizzesFromList) {
+                                    if (currentScreen == Screen.QuizSelection && quizzesFromList.isNotEmpty()) {
+                                        val quizTitles = quizzesFromList.map { it.title }
                                         quizViewModel.checkResumeStates(quizTitles)
                                     }
                                 }
-                                
+
                                 QuizSelectionScreen(
                                     modifier = Modifier.fillMaxSize(),
                                     onQuizSelected = { quiz, withTimer, minutes ->
-                                        selectedQuiz = quiz
-                                        timerEnabled = true
-                                        timerMinutes = minutes
-                                        currentScreen = Screen.QuizInProgress
-                                        userAnswers = emptyMap()
+                                        // Load full quiz details before starting
+                                        quizViewModel.loadQuizDetails(quiz.id) { fullQuiz ->
+                                            if (fullQuiz != null) {
+                                                selectedQuiz = fullQuiz
+                                                timerEnabled = withTimer
+                                                timerMinutes = minutes
+                                                currentScreen = Screen.QuizInProgress
+                                                userAnswers = emptyMap()
+                                            }
+                                        }
                                     },
                                     hasResumeState = quizViewModel.hasResumeState.collectAsState().value,
                                     onResumeQuiz = { quiz ->
-                                        selectedQuiz = quiz
-                                        quizViewModel.loadQuizState(quiz.title)
+                                        // Load full quiz details before resuming
+                                        quizViewModel.loadQuizDetails(quiz.id) { fullQuiz ->
+                                            if (fullQuiz != null) {
+                                                selectedQuiz = fullQuiz
+                                                quizViewModel.loadQuizState(fullQuiz.title)
+                                            }
+                                        }
                                     },
                                     onSettingsClick = {
                                         currentScreen = Screen.Settings
-                                    }
+                                    },
+                                    quizListViewModel = quizListViewModel
                                 )
 
                                 // Handle resume state loading

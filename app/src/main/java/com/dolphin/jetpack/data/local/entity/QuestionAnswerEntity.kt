@@ -15,12 +15,13 @@ import androidx.room.Index
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["attemptId"])]
+    indices = [Index(value = ["attemptId", "userId"])]
 )
 data class QuestionAnswerEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val attemptId: Long,
+    val userId: String, // Firebase user ID
     val questionIndex: Int,
     val questionText: String,
     val selectedAnswer: Int,

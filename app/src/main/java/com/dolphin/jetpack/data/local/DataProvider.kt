@@ -9,6 +9,7 @@ object DataProvider {
     val chapterQuizzes = mapOf(
         "Chapter 1" to listOf(
             Quiz(
+                id = 1,
                 title = "Compose Basics Quiz",
                 questions = listOf(
                     Question(
@@ -64,6 +65,7 @@ object DataProvider {
                 )
             ),
             Quiz(
+                id = 2,
                 title = "State Management Quiz",
                 questions = listOf(
                     Question(
@@ -119,6 +121,7 @@ object DataProvider {
                 )
             ),
             Quiz(
+                id = 3,
                 title = "Modifiers Quiz",
                 questions = listOf(
                     Question(
@@ -176,6 +179,7 @@ object DataProvider {
         ),
         "Chapter 2" to listOf(
             Quiz(
+                id = 4,
                 title = "Layouts Quiz",
                 questions = listOf(
                     Question(
@@ -231,6 +235,7 @@ object DataProvider {
                 )
             ),
             Quiz(
+                id = 5,
                 title = "Material Design Quiz",
                 questions = listOf(
                     Question(
@@ -286,6 +291,7 @@ object DataProvider {
                 )
             ),
             Quiz(
+                id = 6,
                 title = "Navigation Quiz",
                 questions = listOf(
                     Question(
@@ -343,6 +349,7 @@ object DataProvider {
         ),
         "Chapter 3" to listOf(
             Quiz(
+                id = 7,
                 title = "Theming Quiz",
                 questions = listOf(
                     Question(
@@ -398,6 +405,7 @@ object DataProvider {
                 )
             ),
             Quiz(
+                id = 8,
                 title = "Animation Quiz",
                 questions = listOf(
                     Question(
@@ -453,6 +461,7 @@ object DataProvider {
                 )
             ),
             Quiz(
+                id = 9,
                 title = "ViewModel Quiz",
                 questions = listOf(
                     Question(

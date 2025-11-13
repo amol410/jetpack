@@ -1,0 +1,31 @@
+uild Jetpack: failed At 11/5/2025 12:42 AM with 11 errors, 1 warning
+
+:app:processDebugResources UP-TO-DATE 1 warning
+
+We recommend using a newer Android Gradle plugin to use com...
+
+:app:compileDebugKotlin 9 errors
+
+HistoryScreen.kt (9 errors)
+
+Unresolved reference 'CircleShape'. :130
+
+Unresolved reference 'History'. :135
+
+Unresolved reference 'TextAlign'. :150
+
+Unresolved reference 'TextAlign'. :159
+
+Unresolved reference 'CircleShape'. :185
+
+Unresolved reference 'Error'. :190
+
+Unresolved reference 'TextAlign'. :205
+
+Unresolved reference 'TextAlign'. :215
+
+StatisticsScreen.kt
+
+org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compila...
+
+Compilation error

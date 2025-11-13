@@ -5,7 +5,10 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dolphin.jetpack.ads.InterstitialAdManager
+import com.dolphin.jetpack.data.remote.NetworkResult
+import com.dolphin.jetpack.data.repository.ContentRepository
 import com.dolphin.jetpack.domain.model.QuestionAnswer
+import com.dolphin.jetpack.domain.model.Quiz
 import com.dolphin.jetpack.domain.model.QuizAttempt
 import com.dolphin.jetpack.domain.model.QuizState
 import com.dolphin.jetpack.domain.repository.QuizRepository
@@ -22,12 +25,22 @@ sealed class QuizUiState {
     data class Error(val message: String) : QuizUiState()
 }
 
+sealed class QuizListState {
+    object Loading : QuizListState()
+    data class Success(val quizzes: List<Quiz>, val offlineQuizIds: Map<Int, Boolean>) : QuizListState()
+    data class Error(val message: String) : QuizListState()
+}
+
 class QuizViewModel(
-    private val repository: QuizRepository
+    private val repository: QuizRepository,
+    private val contentRepository: ContentRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<QuizUiState>(QuizUiState.Idle)
     val uiState: StateFlow<QuizUiState> = _uiState.asStateFlow()
+
+    private val _quizListState = MutableStateFlow<QuizListState>(QuizListState.Loading)
+    val quizListState: StateFlow<QuizListState> = _quizListState.asStateFlow()
 
     private val _hasResumeState = MutableStateFlow<Map<String, Boolean>>(emptyMap())
     val hasResumeState: StateFlow<Map<String, Boolean>> = _hasResumeState.asStateFlow()
@@ -40,6 +53,68 @@ class QuizViewModel(
 
     // Your AdMob Interstitial Ad Unit ID
     private val adUnitId = "ca-app-pub-6038618318911032/1779472799"
+
+    init {
+        loadQuizzes()
+    }
+
+    fun loadQuizzes() {
+        viewModelScope.launch {
+            _quizListState.value = QuizListState.Loading
+            when (val result = contentRepository.getQuizzes()) {
+                is NetworkResult.Success -> {
+                    val quizzes = result.data
+                    // Build offline status map
+                    val offlineMap = mutableMapOf<Int, Boolean>()
+                    quizzes.forEach { quiz ->
+                        offlineMap[quiz.id] = contentRepository.isQuizOffline(quiz.id)
+                    }
+                    _quizListState.value = QuizListState.Success(quizzes, offlineMap)
+                }
+                is NetworkResult.Error -> {
+                    _quizListState.value = QuizListState.Error(result.message)
+                }
+                else -> {}
+            }
+        }
+    }
+
+    // Load full quiz details when user selects a quiz
+    fun loadQuizDetails(quizId: Int, onLoaded: (Quiz?) -> Unit) {
+        viewModelScope.launch {
+            _uiState.value = QuizUiState.Loading
+            when (val result = contentRepository.getQuiz(quizId)) {
+                is NetworkResult.Success -> {
+                    val quiz = result.data
+                    _uiState.value = QuizUiState.Idle
+                    onLoaded(quiz)
+                }
+                is NetworkResult.Error -> {
+                    _uiState.value = QuizUiState.Error(result.message)
+                    onLoaded(null)
+                }
+                else -> {
+                    onLoaded(null)
+                }
+            }
+        }
+    }
+
+    fun toggleQuizOffline(quizId: Int, quizTitle: String, makeOffline: Boolean) {
+        viewModelScope.launch {
+            try {
+                contentRepository.toggleQuizOffline(quizId, quizTitle, makeOffline)
+                // Reload quizzes to reflect the change
+                loadQuizzes()
+            } catch (e: Exception) {
+                _quizListState.value = QuizListState.Error(e.message ?: "Failed to toggle offline status")
+            }
+        }
+    }
+
+    suspend fun isQuizOffline(quizId: Int): Boolean {
+        return contentRepository.isQuizOffline(quizId)
+    }
 
     fun checkResumeStates(quizTitles: List<String>) {
         viewModelScope.launch {

@@ -12,8 +12,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class NotesViewModel : ViewModel() {
-    private val repository = ContentRepository()
+class NotesViewModel(
+    private val repository: ContentRepository
+) : ViewModel() {
 
     private val _chapters = MutableStateFlow<List<Chapter>>(emptyList())
     val chapters: StateFlow<List<Chapter>> = _chapters.asStateFlow()
@@ -36,23 +37,43 @@ class NotesViewModel : ViewModel() {
     private val _isLoadingNotes = MutableStateFlow(false)
     val isLoadingNotes: StateFlow<Boolean> = _isLoadingNotes.asStateFlow()
 
+    private val _isUsingOfflineData = MutableStateFlow(false)
+    val isUsingOfflineData: StateFlow<Boolean> = _isUsingOfflineData.asStateFlow()
+
+    // Download progress tracking
+    private val _downloadingChapters = MutableStateFlow<Set<Int>>(emptySet())
+    val downloadingChapters: StateFlow<Set<Int>> = _downloadingChapters.asStateFlow()
+
+    // For optimistic UI updates
+    private var lastLoadedChapters: List<Chapter> = emptyList()
+    private var lastLoadedTopic: Topic? = null
+    private var lastLoadedNotes: List<Note> = emptyList()
+
     init {
-        loadChapters()
+        // Load chapters with optimistic approach
+        loadChaptersWithOptimisticUpdate()
     }
 
-    fun loadChapters() {
+    fun loadChaptersWithOptimisticUpdate() {
         viewModelScope.launch {
+            // First, try to show local data if available (optimistic UI)
+            // For now, we'll still proceed with the API call as there's no local storage implemented for chapters
             _isLoading.value = true
             _error.value = null
+            _isUsingOfflineData.value = false
 
             when (val result = repository.getChapters()) {
                 is NetworkResult.Success -> {
+                    lastLoadedChapters = result.data
                     _chapters.value = result.data
+                    // Check if we got data from cache by seeing if there was a network error
+                    // The repository returns Success even when loading from cache during network errors
                 }
                 is NetworkResult.Error -> {
                     _error.value = result.message
-                    // Fallback to local hardcoded chapters if API fails
-                    _chapters.value = getLocalChapters()
+                    _isUsingOfflineData.value = true
+                    // Show empty list - no hardcoded fallback
+                    _chapters.value = emptyList()
                 }
                 is NetworkResult.Loading -> {
                     // Already handled by _isLoading
@@ -63,7 +84,14 @@ class NotesViewModel : ViewModel() {
         }
     }
 
+    fun loadChapters() {
+        // For backward compatibility, call the new optimistic load
+        loadChaptersWithOptimisticUpdate()
+    }
+
     // Local fallback data
+    // Removed hardcoded chapters - no longer used
+    @Deprecated("Hardcoded chapters removed")
     private fun getLocalChapters(): List<Chapter> {
         return listOf(
             Chapter(
@@ -121,10 +149,15 @@ class NotesViewModel : ViewModel() {
 
             when (val result = repository.getTopic(topicId)) {
                 is NetworkResult.Success -> {
+                    lastLoadedTopic = result.data
                     _selectedTopic.value = result.data
                 }
                 is NetworkResult.Error -> {
                     _error.value = result.message
+                    // If remote API fails, try to show last loaded data
+                    if (lastLoadedTopic != null && lastLoadedTopic?.id == topicId) {
+                        _selectedTopic.value = lastLoadedTopic
+                    }
                 }
                 is NetworkResult.Loading -> {
                     // Already handled by _isLoadingTopic
@@ -142,11 +175,19 @@ class NotesViewModel : ViewModel() {
 
             when (val result = repository.getNotes(topicId)) {
                 is NetworkResult.Success -> {
+                    lastLoadedNotes = result.data
                     _notes.value = result.data
+                    // Note: Repository returns Success even when loading from cache
+                    // We can't distinguish between online and offline success here
                 }
                 is NetworkResult.Error -> {
                     _error.value = result.message
-                    _notes.value = emptyList()
+                    // If remote API fails, try to show last loaded data
+                    if (lastLoadedNotes.isNotEmpty()) {
+                        _notes.value = lastLoadedNotes
+                    } else {
+                        _notes.value = emptyList()
+                    }
                 }
                 is NetworkResult.Loading -> {
                     // Already handled by _isLoadingNotes
@@ -159,5 +200,37 @@ class NotesViewModel : ViewModel() {
 
     fun retry() {
         loadChapters()
+    }
+
+    // Offline Management
+    fun toggleChapterOffline(chapterId: Int, chapterTitle: String, makeOffline: Boolean) {
+        viewModelScope.launch {
+            try {
+                if (makeOffline) {
+                    // Add to downloading set
+                    _downloadingChapters.value = _downloadingChapters.value + chapterId
+                }
+
+                repository.toggleChapterOffline(chapterId, chapterTitle, makeOffline)
+
+                // Remove from downloading set
+                _downloadingChapters.value = _downloadingChapters.value - chapterId
+
+                // Reload chapters to reflect the change
+                loadChaptersWithOptimisticUpdate()
+            } catch (e: Exception) {
+                // Remove from downloading set on error
+                _downloadingChapters.value = _downloadingChapters.value - chapterId
+                _error.value = "Failed to toggle offline status: ${e.message}"
+            }
+        }
+    }
+
+    suspend fun isChapterOffline(chapterId: Int): Boolean {
+        return repository.isChapterOffline(chapterId)
+    }
+
+    suspend fun isChapterManuallyDownloaded(chapterId: Int): Boolean {
+        return repository.isChapterManuallyDownloaded(chapterId)
     }
 }

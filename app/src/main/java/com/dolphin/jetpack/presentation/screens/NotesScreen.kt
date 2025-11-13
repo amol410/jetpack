@@ -11,7 +11,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -21,10 +25,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dolphin.jetpack.domain.model.Chapter
 import com.dolphin.jetpack.domain.model.Topic
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,7 +39,7 @@ fun NotesScreen(
     selectedChapterId: Int = 1,
     onChapterSelected: (Int) -> Unit = {},
     onContinueLesson: (Topic) -> Unit,
-    notesViewModel: com.dolphin.jetpack.presentation.viewmodel.NotesViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    notesViewModel: com.dolphin.jetpack.presentation.viewmodel.NotesViewModel
 ) {
     // Use a state variable to persist the selected chapter across recompositions
     var localSelectedChapterId by rememberSaveable { mutableStateOf(selectedChapterId) }
@@ -49,21 +55,12 @@ fun NotesScreen(
     val isLoading by notesViewModel.isLoading.collectAsState()
     val error by notesViewModel.error.collectAsState()
 
-    // Calculate overall course completion based on all topics across all chapters (dynamically)
-    val totalTopics = chapters.sumOf { chapter -> chapter.topics.size }
-    val completedTopics = chapters.sumOf { chapter ->
-        chapter.topics.count { topic -> topic.isCompleted }
-    }
-    val overallCompletionPercentage = if (totalTopics > 0) {
-        (completedTopics.toFloat() / totalTopics * 100).toInt()
-    } else 0
-
     // Find the currently selected chapter based on the ID
     val selectedChapter = chapters.find { it.id == localSelectedChapterId }
 
-    // Initialize with first chapter if none is selected
+    // Initialize with first chapter if none is selected or selected chapter doesn't exist
     LaunchedEffect(chapters) {
-        if (localSelectedChapterId == 0 && chapters.isNotEmpty()) {
+        if (chapters.isNotEmpty() && selectedChapter == null) {
             localSelectedChapterId = chapters.first().id
             onChapterSelected(localSelectedChapterId) // Notify parent of the change
         }
@@ -81,28 +78,42 @@ fun NotesScreen(
             )
         }
 
-        // Show error message
+        // Show error message - only when no chapters loaded
         if (error != null && chapters.isEmpty()) {
             Column(
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .padding(16.dp),
+                    .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                Icon(
+                    imageVector = Icons.Default.CloudOff,
+                    contentDescription = "No connection",
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Failed to load chapters",
-                    fontSize = 18.sp,
+                    text = "No Internet Connection",
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.error
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = error ?: "Unknown error",
+                    text = "Please check your internet connection",
                     fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 Button(onClick = { notesViewModel.retry() }) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text("Retry")
                 }
             }
@@ -110,23 +121,19 @@ fun NotesScreen(
 
         // Show content when chapters are loaded
         if (chapters.isNotEmpty()) {
-            Column(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                // Header Section
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    tonalElevation = 2.dp
+            Box(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp)
+                    // Header Section
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        tonalElevation = 2.dp
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp)
                         ) {
                             Text(
                                 text = "JETPACK COMPOSE COURSE",
@@ -134,84 +141,87 @@ fun NotesScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
-                            // Show error indicator if there's an error but we have fallback data
-                            if (error != null) {
-                                Text(
-                                    text = "Using offline data",
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.error
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Content Area - Show either chapter list or topic list
+                    if (showChapterList) {
+                        ChapterListView(
+                            chapters = chapters,
+                            selectedChapter = selectedChapter,
+                            onChapterSelected = { chapter ->
+                                localSelectedChapterId = chapter.id
+                                onChapterSelected(chapter.id) // Notify parent of the change
+                                showChapterList = false
+                            },
+                            viewModel = notesViewModel
+                        )
+                    } else {
+                        // Show only topics with a change chapter button on the right
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            // Just the button to change chapter, aligned to the right
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                OutlinedButton(
+                                    onClick = { showChapterList = true },
+                                    shape = RoundedCornerShape(20.dp)
+                                ) {
+                                    Text("Chapters")
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = "Select chapter"
+                                    )
+                                }
+                            }
+
+                            // Topics only - no chapter name
+                            selectedChapter?.let { chapter ->
+                                TopicListView(
+                                    chapter = chapter,
+                                    onContinueLesson = onContinueLesson
                                 )
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Chapter Selection Section
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Chapter ${selectedChapter?.id ?: 1}:",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = selectedChapter?.title ?: "",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-
-                    // Chapters Dropdown Button
-                    OutlinedButton(
-                        onClick = { showChapterList = !showChapterList },
-                        shape = RoundedCornerShape(20.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = if (showChapterList)
-                                MaterialTheme.colorScheme.primaryContainer
-                            else
-                                Color.Transparent
-                        )
+                // Offline indicator at the bottom
+                if (error != null && chapters.isNotEmpty()) {
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        tonalElevation = 4.dp
                     ) {
-                        Text("Chapters")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = if (showChapterList)
-                                Icons.Default.KeyboardArrowUp
-                            else
-                                Icons.Default.ArrowDropDown,
-                            contentDescription = "Toggle chapters"
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Content Area - Show either chapter list or topic list
-                if (showChapterList) {
-                    ChapterListView(
-                        chapters = chapters,
-                        selectedChapter = selectedChapter,
-                        onChapterSelected = { chapter ->
-                            localSelectedChapterId = chapter.id
-                            onChapterSelected(chapter.id) // Notify parent of the change
-                            showChapterList = false
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CloudDone,
+                                contentDescription = "Offline",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Using offline data",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Medium
+                            )
                         }
-                    )
-                } else {
-                    selectedChapter?.let { chapter ->
-                        TopicListView(
-                            chapter = chapter,
-                            onContinueLesson = onContinueLesson
-                        )
                     }
                 }
             }
@@ -223,8 +233,26 @@ fun NotesScreen(
 fun ChapterListView(
     chapters: List<Chapter>,
     selectedChapter: Chapter?,
-    onChapterSelected: (Chapter) -> Unit
+    onChapterSelected: (Chapter) -> Unit,
+    viewModel: com.dolphin.jetpack.presentation.viewmodel.NotesViewModel
 ) {
+    // Track manually downloaded status for each chapter
+    var offlineStatusMap by remember { mutableStateOf<Map<Int, Boolean>>(emptyMap()) }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Track downloading chapters
+    val downloadingChapters by viewModel.downloadingChapters.collectAsState()
+
+    // Load manually downloaded status for all chapters
+    LaunchedEffect(chapters) {
+        if (chapters.isNotEmpty()) {
+            val statusMap = mutableMapOf<Int, Boolean>()
+            chapters.forEach { chapter ->
+                statusMap[chapter.id] = viewModel.isChapterManuallyDownloaded(chapter.id)
+            }
+            offlineStatusMap = statusMap
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -248,7 +276,16 @@ fun ChapterListView(
             ChapterCard(
                 chapter = chapter,
                 isSelected = chapter.id == selectedChapter?.id,
-                onClick = { onChapterSelected(chapter) }
+                isOffline = offlineStatusMap[chapter.id] ?: false,
+                isDownloading = downloadingChapters.contains(chapter.id),
+                onClick = { onChapterSelected(chapter) },
+                onOfflineToggle = { makeOffline ->
+                    viewModel.toggleChapterOffline(chapter.id, chapter.title, makeOffline)
+                    // Update local state immediately for responsiveness
+                    coroutineScope.launch {
+                        offlineStatusMap = offlineStatusMap + (chapter.id to makeOffline)
+                    }
+                }
             )
             Spacer(modifier = Modifier.height(12.dp))
         }
@@ -259,7 +296,10 @@ fun ChapterListView(
 fun ChapterCard(
     chapter: Chapter,
     isSelected: Boolean,
-    onClick: () -> Unit
+    isOffline: Boolean,
+    isDownloading: Boolean = false,
+    onClick: () -> Unit,
+    onOfflineToggle: (Boolean) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -290,30 +330,47 @@ fun ChapterCard(
                 )
             }
 
-            // Progress Circle
+            // Offline toggle button with download progress
             Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(
-                        color = if (isSelected)
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                        else
-                            MaterialTheme.colorScheme.surfaceVariant,
-                        shape = CircleShape
-                    )
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "${chapter.completionPercentage}%",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isSelected)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                // Show circular progress indicator while downloading
+                if (isDownloading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(40.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 3.dp
+                    )
+                }
+
+                IconButton(
+                    onClick = {
+                        if (!isDownloading) {
+                            onOfflineToggle(!isOffline)
+                        }
+                    },
+                    enabled = !isDownloading
+                ) {
+                    Icon(
+                        imageVector = when {
+                            isDownloading -> Icons.Default.CloudDownload
+                            isOffline -> Icons.Default.CloudDone
+                            else -> Icons.Default.CloudDownload
+                        },
+                        contentDescription = when {
+                            isDownloading -> "Downloading..."
+                            isOffline -> "Remove from offline"
+                            else -> "Save for offline"
+                        },
+                        tint = when {
+                            isDownloading -> MaterialTheme.colorScheme.primary
+                            isOffline -> MaterialTheme.colorScheme.primary
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
             }
-        }
+    }
     }
 }
 

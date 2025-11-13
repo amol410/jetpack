@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,6 +33,7 @@ import com.dolphin.jetpack.fcm.FCMTokenManager
 import com.dolphin.jetpack.presentation.components.LineChart
 import com.dolphin.jetpack.presentation.viewmodel.StatisticsUiState
 import com.dolphin.jetpack.presentation.viewmodel.StatisticsViewModel
+import com.dolphin.jetpack.ui.theme.*
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.launch
 
@@ -148,39 +150,122 @@ fun StatisticsScreen(
                 }
                 is StatisticsUiState.Empty -> {
                     Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Icon(
-                            Icons.Default.TrendingUp,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = Color.Gray
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
+                        // Custom illustration using Compose shapes
+                        Box(
+                            modifier = Modifier
+                                .size(120.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.TrendingUp,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(64.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
                         Text(
-                            "No statistics available",
+                            text = "No Statistics Available",
                             fontSize = 20.sp,
-                            color = Color.Gray
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center
                         )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
                         Text(
-                            "Complete a quiz to see your statistics",
+                            text = "You haven't solved any quizzes yet, who knows?",
                             fontSize = 14.sp,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
                         )
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        Button(
+                            onClick = { viewModel.refresh() }
+                        ) {
+                            Text("Refresh")
+                        }
                     }
                 }
                 is StatisticsUiState.Error -> {
                     Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
+                        // Custom illustration using Compose shapes
+                        Box(
+                            modifier = Modifier
+                                .size(120.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(64.dp),
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
                         Text(
-                            "Error: ${state.message}",
-                            color = MaterialTheme.colorScheme.error
+                            text = "Failed to Load Statistics",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center
                         )
-                        Button(onClick = { viewModel.refresh() }) {
-                            Text("Retry")
+                        
+                        if (!state.message.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Text(
+                                text = "No statistics data available: ${state.message}. Try again!",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        } else {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Text(
+                                text = "Check your connection and try again",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        Button(
+                            onClick = { viewModel.refresh() }
+                        ) {
+                            Text("Try Again")
                         }
                     }
                 }
@@ -193,29 +278,36 @@ fun StatisticsScreen(
 fun OverallStatsCard(statistics: QuizStatistics) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        shape = MaterialTheme.shapes.medium
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text(
+                "Overall Performance",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 StatCircle(
                     value = "${statistics.totalAttempts}",
                     label = "Total Quizzes",
-                    color = Color(0xFF2196F3)
+                    color = InfoBlue
                 )
 
                 StatCircle(
                     value = "${statistics.averageScore.toInt()}%",
                     label = "Average Score",
-                    color = Color(0xFFFF9800)
+                    color = WarningYellow
                 )
 
                 StatCircle(
                     value = "${statistics.bestScore}%",
                     label = "Best Score",
-                    color = Color(0xFF4CAF50)
+                    color = SuccessGreen
                 )
             }
         }
@@ -230,24 +322,27 @@ fun StatCircle(value: String, label: String, color: Color) {
     ) {
         Box(
             modifier = Modifier
-                .size(80.dp)
+                .size(72.dp)
                 .clip(CircleShape)
-                .background(color.copy(alpha = 0.2f)),
+                .background(color = color.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = value,
-                fontSize = 20.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = color
+                color = color,
+                style = MaterialTheme.typography.headlineMedium
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = label,
             fontSize = 12.sp,
             textAlign = TextAlign.Center,
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium
         )
     }
 }
@@ -255,20 +350,21 @@ fun StatCircle(value: String, label: String, color: Color) {
 @Composable
 fun QuizPerformanceCard(performance: com.dolphin.jetpack.domain.model.QuizPerformance) {
     val scoreColor = when {
-        performance.averageScore >= 90 -> Color(0xFF4CAF50)
-        performance.averageScore >= 70 -> Color(0xFF2196F3)
-        performance.averageScore >= 50 -> Color(0xFFFF9800)
-        else -> Color(0xFFF44336)
+        performance.averageScore >= 90 -> MaterialTheme.colorScheme.primary
+        performance.averageScore >= 70 -> MaterialTheme.colorScheme.tertiary
+        performance.averageScore >= 50 -> MaterialTheme.colorScheme.secondary
+        else -> MaterialTheme.colorScheme.error
     }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(18.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -276,27 +372,31 @@ fun QuizPerformanceCard(performance: com.dolphin.jetpack.domain.model.QuizPerfor
                 Text(
                     text = performance.quizTitle,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleMedium
                 )
                 Text(
                     text = "${performance.attemptCount} attempts",
-                    fontSize = 14.sp,
-                    color = Color.Gray
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium
                 )
             }
 
             Box(
                 modifier = Modifier
-                    .size(60.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(scoreColor.copy(alpha = 0.2f)),
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(color = scoreColor.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "${performance.averageScore.toInt()}%",
-                    fontSize = 18.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = scoreColor
+                    color = scoreColor,
+                    style = MaterialTheme.typography.titleMedium
                 )
             }
         }
@@ -307,10 +407,11 @@ fun QuizPerformanceCard(performance: com.dolphin.jetpack.domain.model.QuizPerfor
 fun WrongQuestionCard(wrongQuestion: com.dolphin.jetpack.domain.model.WrongQuestion) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFF44336).copy(alpha = 0.1f)
-        )
+            containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.08f)
+        ),
+        shape = MaterialTheme.shapes.small
     ) {
         Row(
             modifier = Modifier
@@ -322,21 +423,24 @@ fun WrongQuestionCard(wrongQuestion: com.dolphin.jetpack.domain.model.WrongQuest
             Text(
                 text = wrongQuestion.questionText,
                 fontSize = 14.sp,
-                modifier = Modifier.weight(1f)
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 12.dp)
             )
-            Spacer(modifier = Modifier.width(8.dp))
             Box(
                 modifier = Modifier
+                    .size(32.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFF44336)),
+                    .background(MaterialTheme.colorScheme.error),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "${wrongQuestion.wrongCount}×",
+                    text = "${wrongQuestion.wrongCount}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    color = MaterialTheme.colorScheme.onError,
+                    style = MaterialTheme.typography.labelSmall
                 )
             }
         }
@@ -347,13 +451,15 @@ fun WrongQuestionCard(wrongQuestion: com.dolphin.jetpack.domain.model.WrongQuest
 fun ImprovementChartCard(statistics: QuizStatistics) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        shape = MaterialTheme.shapes.medium
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Text(
                 "Your Progress",
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
@@ -410,7 +516,7 @@ fun DeveloperToolsCard() {
                     fontSize = 12.sp,
                     modifier = Modifier.weight(1f),
                     maxLines = 2,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 IconButton(
                     onClick = {

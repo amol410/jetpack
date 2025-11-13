@@ -7,11 +7,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,12 +19,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dolphin.jetpack.domain.model.QuizAttempt
 import com.dolphin.jetpack.presentation.util.HistoryExporter
 import com.dolphin.jetpack.presentation.viewmodel.HistoryUiState
 import com.dolphin.jetpack.presentation.viewmodel.HistoryViewModel
+import com.dolphin.jetpack.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -114,32 +115,122 @@ fun HistoryScreen(
                 }
                 is HistoryUiState.Empty -> {
                     Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
+                        // Custom illustration using Compose shapes
+                        Box(
+                            modifier = Modifier
+                                .size(120.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AccessTime,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(64.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
                         Text(
-                            "No quiz history yet",
+                            text = "No Quiz History Yet",
                             fontSize = 20.sp,
-                            color = Color.Gray
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center
                         )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
                         Text(
-                            "Complete a quiz to see your history here",
+                            text = "You haven't solved any quizzes yet, who knows?",
                             fontSize = 14.sp,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
                         )
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        Button(
+                            onClick = { viewModel.loadHistory() }
+                        ) {
+                            Text("Refresh")
+                        }
                     }
                 }
                 is HistoryUiState.Error -> {
                     Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
+                        // Custom illustration using Compose shapes
+                        Box(
+                            modifier = Modifier
+                                .size(120.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(64.dp),
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
                         Text(
-                            "Error: ${state.message}",
-                            color = MaterialTheme.colorScheme.error
+                            text = "Failed to Load History",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center
                         )
-                        Button(onClick = { viewModel.loadHistory() }) {
-                            Text("Retry")
+                        
+                        if (!state.message.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Text(
+                                text = "No history data available: ${state.message}. Try again!",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        } else {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Text(
+                                text = "Check your connection and try again",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        Button(
+                            onClick = { viewModel.loadHistory() }
+                        ) {
+                            Text("Try Again")
                         }
                     }
                 }
@@ -182,10 +273,10 @@ fun HistoryItemCard(
 ) {
     val dateFormat = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
     val scoreColor = when {
-        attempt.percentage >= 90 -> Color(0xFF4CAF50)
-        attempt.percentage >= 70 -> Color(0xFF2196F3)
-        attempt.percentage >= 50 -> Color(0xFFFF9800)
-        else -> Color(0xFFF44336)
+        attempt.percentage >= 90 -> SuccessGreen
+        attempt.percentage >= 70 -> InfoBlue
+        attempt.percentage >= 50 -> WarningYellow
+        else -> QuizError
     }
 
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -193,67 +284,99 @@ fun HistoryItemCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(4.dp)
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = attempt.quizTitle,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = dateFormat.format(Date(attempt.dateTime)),
                     fontSize = 14.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(50.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(scoreColor.copy(alpha = 0.2f)),
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(color = scoreColor.copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "${attempt.percentage}%",
-                            fontSize = 16.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = scoreColor
                         )
                     }
-                    Column {
-                        Text(
-                            text = "${attempt.score}/${attempt.totalQuestions}",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = "${attempt.timeTakenSeconds}s",
-                            fontSize = 12.sp,
-                            color = Color.Gray
-                        )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Column {
+                            Text(
+                                text = "${attempt.score}/${attempt.totalQuestions}",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = "correct",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "${attempt.timeTakenSeconds}s",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = "time",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                     }
                 }
             }
 
-            IconButton(onClick = { showDeleteDialog = true }) {
+            IconButton(
+                onClick = { showDeleteDialog = true },
+                modifier = Modifier
+                    .size(36.dp)
+                    .padding(4.dp)
+            ) {
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = "Delete",
-                    tint = MaterialTheme.colorScheme.error
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -262,8 +385,18 @@ fun HistoryItemCard(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete Attempt?") },
-            text = { Text("Are you sure you want to delete this quiz attempt?") },
+            title = { 
+                Text(
+                    "Delete Attempt?",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            },
+            text = { 
+                Text(
+                    "Are you sure you want to delete this quiz attempt?",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
             confirmButton = {
                 Button(
                     onClick = {
@@ -272,14 +405,24 @@ fun HistoryItemCard(
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error
-                    )
+                    ),
+                    shape = MaterialTheme.shapes.extraSmall
                 ) {
-                    Text("Delete")
+                    Text(
+                        "Delete",
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             },
             dismissButton = {
-                OutlinedButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
+                OutlinedButton(
+                    onClick = { showDeleteDialog = false },
+                    shape = MaterialTheme.shapes.extraSmall
+                ) {
+                    Text(
+                        "Cancel",
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
         )
