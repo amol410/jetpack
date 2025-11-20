@@ -163,11 +163,11 @@ fun LessonNotesScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp)
-                    .padding(top = 8.dp)
+                    .padding(horizontal = 24.dp)
+                    .padding(top = 16.dp, bottom = 4.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(MaterialTheme.colorScheme.primaryContainer)
-                    .padding(20.dp),
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -179,7 +179,7 @@ fun LessonNotesScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Content area
             Box(

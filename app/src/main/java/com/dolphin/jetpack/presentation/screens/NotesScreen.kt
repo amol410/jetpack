@@ -133,7 +133,8 @@ fun NotesScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(24.dp)
+                                .padding(horizontal = 24.dp)
+                                .padding(top = 16.dp, bottom = 8.dp)
                         ) {
                             Text(
                                 text = "JETPACK COMPOSE COURSE",
@@ -144,7 +145,7 @@ fun NotesScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     // Content Area - Show either chapter list or topic list
                     if (showChapterList) {

@@ -5,8 +5,13 @@ import androidx.compose.ui.graphics.Color
 // Status colors - Modern vibrant colors
 val SuccessGreen = Color(0xFF00C853)  // More vibrant green
 val InfoBlue = Color(0xFF29B6F6)       // More vibrant blue
-val WarningYellow = Color(0xFFFFD600)  // More vibrant yellow
+val WarningYellow = Color(0xFFFFA726)  // Orange - more visible than yellow
 val QuizError = Color(0xFFFF3D00)      // More vibrant red
+
+// Darker versions for better visibility
+val SuccessGreenDark = Color(0xFF00A344)  // Darker green
+val InfoBlueDark = Color(0xFF0288D1)       // Darker blue
+val WarningYellowDark = Color(0xFFFF8F00)  // Darker orange
 
 // Primary colors - Modern purple
 val PrimaryLight = Color(0xFF6553C9)           // Deep purple

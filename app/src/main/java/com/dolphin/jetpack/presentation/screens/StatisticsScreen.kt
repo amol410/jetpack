@@ -5,6 +5,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -75,14 +76,6 @@ fun StatisticsScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         // Overall Statistics
-                        item {
-                            Text(
-                                "Overall Performance",
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
                         item {
                             OverallStatsCard(state.statistics)
                         }
@@ -295,19 +288,22 @@ fun OverallStatsCard(statistics: QuizStatistics) {
                 StatCircle(
                     value = "${statistics.totalAttempts}",
                     label = "Total Quizzes",
-                    color = InfoBlue
+                    color = InfoBlue,
+                    darkColor = InfoBlueDark
                 )
 
                 StatCircle(
                     value = "${statistics.averageScore.toInt()}%",
                     label = "Average Score",
-                    color = WarningYellow
+                    color = WarningYellow,
+                    darkColor = WarningYellowDark
                 )
 
                 StatCircle(
                     value = "${statistics.bestScore}%",
                     label = "Best Score",
-                    color = SuccessGreen
+                    color = SuccessGreen,
+                    darkColor = SuccessGreenDark
                 )
             }
         }
@@ -315,7 +311,7 @@ fun OverallStatsCard(statistics: QuizStatistics) {
 }
 
 @Composable
-fun StatCircle(value: String, label: String, color: Color) {
+fun StatCircle(value: String, label: String, color: Color, darkColor: Color) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -323,6 +319,7 @@ fun StatCircle(value: String, label: String, color: Color) {
         Box(
             modifier = Modifier
                 .size(72.dp)
+                .border(width = 2.dp, color = PrimaryLight, shape = CircleShape)
                 .clip(CircleShape)
                 .background(color = color.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center
@@ -331,8 +328,8 @@ fun StatCircle(value: String, label: String, color: Color) {
                 text = value,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = color,
-                style = MaterialTheme.typography.headlineMedium
+                color = darkColor,
+                textAlign = TextAlign.Center
             )
         }
         Spacer(modifier = Modifier.height(12.dp))

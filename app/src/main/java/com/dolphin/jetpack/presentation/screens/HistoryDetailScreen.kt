@@ -1,7 +1,9 @@
 // File: HistoryDetailScreen.kt
 package com.dolphin.jetpack.presentation.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -16,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,6 +41,14 @@ fun HistoryDetailScreen(
         viewModel.loadAttemptDetail(attemptId)
     }
 
+    // Handle back button press
+    BackHandler {
+        onBack()
+    }
+
+    // Track swipe gesture
+    var offsetX by remember { mutableStateOf(0f) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -54,6 +65,24 @@ fun HistoryDetailScreen(
             modifier = modifier
                 .fillMaxSize()
                 .padding(padding)
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            // If swiped more than 100dp to the right, go back
+                            if (offsetX > 100) {
+                                onBack()
+                            }
+                            offsetX = 0f
+                        },
+                        onHorizontalDrag = { _, dragAmount ->
+                            // Only allow right swipe (positive values)
+                            val newOffset = offsetX + dragAmount
+                            if (newOffset >= 0) {
+                                offsetX = newOffset
+                            }
+                        }
+                    )
+                }
         ) {
             selectedAttempt?.let { attempt ->
                 LazyColumn(

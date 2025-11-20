@@ -103,7 +103,8 @@ fun HistoryScreen(
                                 onClick = { showClearDialog = true },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(16.dp),
+                                    .padding(horizontal = 16.dp)
+                                    .padding(top = 8.dp, bottom = 12.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.error
                                 )

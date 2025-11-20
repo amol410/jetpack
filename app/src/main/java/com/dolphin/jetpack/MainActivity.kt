@@ -230,6 +230,7 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
         }
     }
 
+    // Handle back press within Quizzes tab (for internal navigation)
     BackHandler(enabled = currentScreen != Screen.QuizSelection && selectedBottomNav == BottomNavItem.Quizzes) {
         when (currentScreen) {
             Screen.QuizInProgress -> showExitDialog = true
@@ -242,6 +243,20 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                 currentScreen = Screen.Notes
             }
             else -> {}
+        }
+    }
+
+    // Handle back press on History, Statistics tabs - navigate to Notes instead of going to background
+    BackHandler(enabled = selectedBottomNav in listOf(BottomNavItem.History, BottomNavItem.Statistics)) {
+        coroutineScope.launch {
+            pagerState.animateScrollToPage(0) // Navigate to Notes tab (page 0)
+        }
+    }
+
+    // Handle back press on Quizzes tab when at QuizSelection screen - navigate to Notes instead of going to background
+    BackHandler(enabled = selectedBottomNav == BottomNavItem.Quizzes && currentScreen == Screen.QuizSelection) {
+        coroutineScope.launch {
+            pagerState.animateScrollToPage(0) // Navigate to Notes tab (page 0)
         }
     }
 
