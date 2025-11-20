@@ -33,6 +33,84 @@ import com.dolphin.jetpack.domain.model.Topic
 import com.dolphin.jetpack.presentation.viewmodel.NotesViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlin.math.abs
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.core.text.HtmlCompat
+import android.text.Spanned
+import android.text.style.StyleSpan
+import android.text.style.RelativeSizeSpan
+import android.text.style.AbsoluteSizeSpan
+
+/**
+ * Converts HTML string to AnnotatedString with proper formatting
+ * Supports: bold, italic, headers (h1-h6), and other HTML tags
+ */
+private fun htmlToAnnotatedString(html: String, baseFontSize: Float = 16f): AnnotatedString {
+    val spanned = HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY)
+
+    return buildAnnotatedString {
+        append(spanned.toString())
+
+        // Apply all spans from the HTML
+        spanned.getSpans(0, spanned.length, Any::class.java).forEach { span ->
+            val start = spanned.getSpanStart(span)
+            val end = spanned.getSpanEnd(span)
+
+            when (span) {
+                is StyleSpan -> {
+                    when (span.style) {
+                        android.graphics.Typeface.BOLD -> {
+                            addStyle(
+                                style = SpanStyle(fontWeight = FontWeight.Bold),
+                                start = start,
+                                end = end
+                            )
+                        }
+                        android.graphics.Typeface.ITALIC -> {
+                            addStyle(
+                                style = SpanStyle(fontWeight = FontWeight.Normal, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
+                                start = start,
+                                end = end
+                            )
+                        }
+                        android.graphics.Typeface.BOLD_ITALIC -> {
+                            addStyle(
+                                style = SpanStyle(fontWeight = FontWeight.Bold, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
+                                start = start,
+                                end = end
+                            )
+                        }
+                    }
+                }
+                is RelativeSizeSpan -> {
+                    // Handle relative size changes (e.g., from <h1>, <h2>, etc.)
+                    val newSize = baseFontSize * span.sizeChange
+                    addStyle(
+                        style = SpanStyle(fontSize = newSize.sp),
+                        start = start,
+                        end = end
+                    )
+                }
+                is AbsoluteSizeSpan -> {
+                    // Handle absolute size changes
+                    val size = if (span.dip) {
+                        span.size.toFloat()
+                    } else {
+                        // Convert px to sp (approximate)
+                        span.size / 1.5f
+                    }
+                    addStyle(
+                        style = SpanStyle(fontSize = size.sp),
+                        start = start,
+                        end = end
+                    )
+                }
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -139,13 +217,9 @@ fun LessonNotesScreen(
                                 modifier = Modifier.padding(bottom = 12.dp)
                             )
 
-                            // Note content without background
+                            // Note content with HTML formatting preserved
                             Text(
-                                text = androidx.core.text.HtmlCompat.fromHtml(
-                                    note.content,
-                                    androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY
-                                ).toString(),
-                                fontSize = 16.sp,
+                                text = htmlToAnnotatedString(note.content, baseFontSize = 16f),
                                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
                                 lineHeight = 24.sp,
                                 modifier = Modifier.padding(bottom = 24.dp)

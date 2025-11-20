@@ -155,7 +155,7 @@ class ContentRepository(
                         id = noteResponse.id,
                         topicId = noteResponse.topic_id,
                         title = decodeHtml(noteResponse.title),
-                        content = decodeHtml(noteResponse.content ?: ""),
+                        content = noteResponse.content ?: "", // Keep HTML formatting for proper rendering
                         orderIndex = noteResponse.order_index,
                         topicTitle = noteResponse.topic_title?.let { decodeHtml(it) } ?: "",
                         chapterId = noteResponse.chapter_id,
