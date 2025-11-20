@@ -259,19 +259,6 @@ fun ChapterListView(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp)
     ) {
-        // View Course Summary Link
-        TextButton(
-            onClick = { /* TODO: Navigate to course summary */ },
-            modifier = Modifier.padding(bottom = 16.dp)
-        ) {
-            Text(
-                text = "View Course summary →",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-
         chapters.forEach { chapter ->
             ChapterCard(
                 chapter = chapter,
@@ -323,7 +310,7 @@ fun ChapterCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "#${chapter.id} ${chapter.title}",
+                    text = "${chapter.id} ${chapter.title}",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface

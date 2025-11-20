@@ -4,10 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -22,13 +20,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import com.dolphin.jetpack.domain.model.Topic
 import com.dolphin.jetpack.presentation.viewmodel.NotesViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -207,10 +203,10 @@ fun LessonNotesScreen(
                 ) {
                     // Show notes if available
                     if (notes.isNotEmpty()) {
-                        notes.forEach { note ->
-                            // Note title
+                        notes.forEachIndexed { index, note ->
+                            // Note title with sequential numbering
                             Text(
-                                text = note.title,
+                                text = "${index + 1}. ${note.title}",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onBackground,
@@ -305,30 +301,6 @@ fun LessonNotesScreen(
                         }
                     }
                 }
-            }
-        }
-
-        // Floating back button overlay (doesn't take space in layout)
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(16.dp)
-                .size(48.dp)
-                .zIndex(10f)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
-            contentAlignment = Alignment.Center
-        ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
-                    modifier = Modifier.size(28.dp)
-                )
             }
         }
     }
