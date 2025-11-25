@@ -11,9 +11,11 @@ import com.dolphin.jetpack.fcm.FCMTokenManager
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
@@ -21,11 +23,19 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Grade
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
@@ -56,7 +66,8 @@ enum class Screen {
     Statistics,
     Notes,
     LessonNotes,
-    Settings
+    Settings,
+    Material3Showcase
 }
 
 enum class BottomNavItem {
@@ -111,6 +122,12 @@ fun QuizApp() {
     val authViewModel: AuthViewModel = viewModel()
     val authState by authViewModel.authState.collectAsState()
     var showEmailAuth by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    // Initialize UserSyncManager
+    LaunchedEffect(Unit) {
+        authViewModel.initializeUserSync(context)
+    }
 
     // Show login screen if not authenticated
     when (authState) {
@@ -158,6 +175,7 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
     var selectedAttemptId by remember { mutableStateOf(0L) }
     var selectedTopic by remember { mutableStateOf<com.dolphin.jetpack.domain.model.Topic?>(null) }
     var selectedChapterId by rememberSaveable { mutableStateOf(1) } // Added chapter selection state
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
     // Pager state for swipe navigation - Order: Notes, Quizzes, History, Statistics
     val pagerState = rememberPagerState(
@@ -274,8 +292,81 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
         )
     }
 
-    Scaffold(
-        bottomBar = {
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(
+                modifier = Modifier.fillMaxWidth(0.6f) // 60% of screen width
+            ) {
+                DrawerContent(
+                    currentScreen = currentScreen,
+                    onNavigate = { screen ->
+                        currentScreen = screen
+                        coroutineScope.launch {
+                            drawerState.close()
+                        }
+                    },
+                    onSignOut = {
+                        authViewModel.signOut()
+                        coroutineScope.launch {
+                            drawerState.close()
+                        }
+                    }
+                )
+            }
+        }
+    ) {
+        Scaffold(
+            topBar = {
+                if (currentScreen in listOf(Screen.Notes, Screen.QuizSelection, Screen.History, Screen.Statistics)) {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = when (currentScreen) {
+                                    Screen.Notes -> "Notes"
+                                    Screen.QuizSelection -> "Quizzes"
+                                    Screen.History -> "History"
+                                    Screen.Statistics -> "Statistics"
+                                    else -> "Jetpack"
+                                },
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = {
+                                coroutineScope.launch {
+                                    drawerState.open()
+                                }
+                            }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Menu")
+                            }
+                        },
+                        actions = {
+                            when (currentScreen) {
+                                Screen.QuizSelection -> {
+                                    IconButton(onClick = {
+                                        currentScreen = Screen.Settings
+                                    }) {
+                                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                                    }
+                                }
+                                Screen.Statistics -> {
+                                    IconButton(onClick = {
+                                        statsViewModel.refresh()
+                                    }) {
+                                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                                    }
+                                }
+                                Screen.History -> {
+                                    HistoryScreenActions(historyViewModel = historyViewModel)
+                                }
+                                else -> {}
+                            }
+                        }
+                    )
+                }
+            },
+            bottomBar = {
             if (currentScreen in listOf(Screen.Notes, Screen.QuizSelection, Screen.History, Screen.Statistics)) {
                 NavigationBar {
                     NavigationBarItem(
@@ -579,6 +670,13 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                     )
                 }
 
+                // Material3 Showcase screen
+                Screen.Material3Showcase -> {
+                    Material3ShowcaseScreen(
+                        onBackClick = { currentScreen = Screen.QuizSelection }
+                    )
+                }
+
                 // Login and EmailAuth screens are handled in QuizApp composable
                 Screen.Login, Screen.EmailAuth -> {
                     // These screens are not used in MainQuizApp
@@ -586,6 +684,7 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
                 }
             }
         }
+    }
     }
 }
 
@@ -621,4 +720,111 @@ fun ExitConfirmationDialog(
             }
         }
     )
+}
+
+@Composable
+fun DrawerContent(
+    currentScreen: Screen,
+    onNavigate: (Screen) -> Unit,
+    onSignOut: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        // Header
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp, top = 16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Jetpack",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .background(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .padding(horizontal = 32.dp, vertical = 12.dp)
+            )
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(bottom = 16.dp))
+
+        // Tools menu items
+        DrawerMenuItem(
+            icon = Icons.Default.Palette,
+            label = "Material3 Showcase",
+            selected = currentScreen == Screen.Material3Showcase,
+            onClick = { onNavigate(Screen.Material3Showcase) }
+        )
+
+        DrawerMenuItem(
+            icon = Icons.Default.Settings,
+            label = "Settings",
+            selected = currentScreen == Screen.Settings,
+            onClick = { onNavigate(Screen.Settings) }
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Sign out button at bottom
+        HorizontalDivider(modifier = Modifier.padding(bottom = 16.dp))
+
+        OutlinedButton(
+            onClick = onSignOut,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Sign Out")
+        }
+    }
+}
+
+@Composable
+fun DrawerMenuItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    NavigationDrawerItem(
+        icon = { Icon(icon, contentDescription = null) },
+        label = { Text(label) },
+        selected = selected,
+        onClick = onClick,
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+    )
+}
+
+@Composable
+fun HistoryScreenActions(historyViewModel: HistoryViewModel) {
+    var showFilterDialog by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val historyState by historyViewModel.historyState.collectAsState()
+
+    Row {
+        IconButton(onClick = { showFilterDialog = true }) {
+            Icon(Icons.Default.FilterList, contentDescription = "Filter")
+        }
+        IconButton(onClick = {
+            if (historyState is com.dolphin.jetpack.presentation.viewmodel.HistoryUiState.Success) {
+                val attempts = (historyState as com.dolphin.jetpack.presentation.viewmodel.HistoryUiState.Success).attempts
+                val csvData = com.dolphin.jetpack.presentation.util.HistoryExporter.exportToCsv(attempts)
+                val sendIntent: Intent = Intent().apply {
+                    action = Intent.ACTION_SEND
+                    putExtra(Intent.EXTRA_TEXT, csvData)
+                    type = "text/csv"
+                }
+                val shareIntent = Intent.createChooser(sendIntent, null)
+                context.startActivity(shareIntent)
+            }
+        }) {
+            Icon(Icons.Default.Share, contentDescription = "Export")
+        }
+    }
 }

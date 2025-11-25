@@ -16,8 +16,8 @@ android {
         applicationId = "com.dolphin.jetpack"
         minSdk = 24
         targetSdk = 35
-        versionCode = 6
-        versionName = "6.0.0"
+        versionCode = 8
+        versionName = "6.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
