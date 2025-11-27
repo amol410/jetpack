@@ -90,13 +90,8 @@ class MainActivity : ComponentActivity() {
         // Log app open event
         analytics.logEvent(FirebaseAnalytics.Event.APP_OPEN, null)
 
-        // Request notification permission
-        FCMTokenManager.requestNotificationPermission(this)
-
-        // Get FCM token
-        lifecycleScope.launch {
-            FCMTokenManager.getToken()
-        }
+        // Note: Notification permission and FCM token are now requested AFTER login
+        // See QuizApp composable for the post-login implementation
 
         enableEdgeToEdge()
         setContent {
@@ -157,6 +152,16 @@ fun QuizApp() {
             // Update current user ID in repository
             val userId = (authState as AuthState.Authenticated).user.uid
             AppModule.updateCurrentUser(userId)
+
+            // Request notification permission AFTER successful login
+            val activity = context as? ComponentActivity
+            LaunchedEffect(Unit) {
+                activity?.let {
+                    FCMTokenManager.requestNotificationPermission(it)
+                    FCMTokenManager.getToken()
+                }
+            }
+
             MainQuizApp(authViewModel = authViewModel)
         }
     }

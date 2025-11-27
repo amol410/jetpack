@@ -136,6 +136,11 @@ fun ComponentDetailScreen(
     onBackClick: () -> Unit,
     adManager: com.dolphin.jetpack.ads.AdManager
 ) {
+    // Handle system back gesture to return to Material3 Showcase category list
+    androidx.activity.compose.BackHandler(enabled = true) {
+        onBackClick()
+    }
+
     // Track component view when screen is first composed
     LaunchedEffect(category) {
         adManager.onComponentViewed()
