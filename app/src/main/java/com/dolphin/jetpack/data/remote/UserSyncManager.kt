@@ -22,13 +22,23 @@ class UserSyncManager(private val context: Context) {
     fun syncUser() {
         val currentUser = auth.currentUser
         if (currentUser == null) {
-            Log.w(TAG, "No Firebase user to sync")
+            Log.e(TAG, "════════════════════════════════════════")
+            Log.e(TAG, "❌ Cannot sync user - No Firebase user")
+            Log.e(TAG, "════════════════════════════════════════")
             return
         }
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                Log.d(TAG, "Syncing user: ${currentUser.uid}")
+                Log.d(TAG, "════════════════════════════════════════")
+                Log.d(TAG, "🌐 USER REGISTRATION API CALL")
+                Log.d(TAG, "════════════════════════════════════════")
+                Log.d(TAG, "📋 User Info:")
+                Log.d(TAG, "   - Firebase UID: ${currentUser.uid}")
+                Log.d(TAG, "   - Email: ${currentUser.email}")
+                Log.d(TAG, "   - Display Name: ${currentUser.displayName}")
+                Log.d(TAG, "   - Photo URL: ${currentUser.photoUrl}")
+
                 val request = UserRegisterRequest(
                     firebase_uid = currentUser.uid,
                     email = currentUser.email,
@@ -36,15 +46,62 @@ class UserSyncManager(private val context: Context) {
                     photo_url = currentUser.photoUrl?.toString()
                 )
 
+                Log.d(TAG, "────────────────────────────────────────")
+                Log.d(TAG, "📡 Sending POST to:")
+                Log.d(TAG, "   URL: https://jetpack.dolphincoder.com/api/user_register.php")
+
+                val startTime = System.currentTimeMillis()
                 val response = api.registerUser(request)
+                val duration = System.currentTimeMillis() - startTime
+
+                Log.d(TAG, "────────────────────────────────────────")
+                Log.d(TAG, "📥 Response (${duration}ms):")
+                Log.d(TAG, "   - HTTP Status: ${response.code()}")
+                Log.d(TAG, "   - Is Successful: ${response.isSuccessful}")
+                Log.d(TAG, "   - Success Flag: ${response.body()?.success}")
+                Log.d(TAG, "   - Message: ${response.body()?.message}")
+
                 if (response.isSuccessful && response.body()?.success == true) {
                     val userData = response.body()?.data
-                    Log.d(TAG, "User synced successfully: ${userData?.user_id}")
+                    Log.d(TAG, "════════════════════════════════════════")
+                    Log.d(TAG, "✅ SUCCESS: User registered/updated!")
+                    Log.d(TAG, "   - User ID: ${userData?.user_id}")
+                    Log.d(TAG, "   - Firebase UID: ${userData?.firebase_uid}")
+                    Log.d(TAG, "════════════════════════════════════════")
                 } else {
-                    Log.e(TAG, "Failed to sync user: ${response.body()?.message}")
+                    val errorBody = try {
+                        response.errorBody()?.string() ?: "No error body"
+                    } catch (e: Exception) {
+                        "Error reading error body"
+                    }
+                    Log.e(TAG, "════════════════════════════════════════")
+                    Log.e(TAG, "❌ FAILED: User registration failed!")
+                    Log.e(TAG, "   - HTTP Status: ${response.code()}")
+                    Log.e(TAG, "   - Message: ${response.body()?.message}")
+                    Log.e(TAG, "   - Error Body: $errorBody")
+                    Log.e(TAG, "════════════════════════════════════════")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error syncing user: ${e.message}", e)
+                Log.e(TAG, "════════════════════════════════════════")
+                Log.e(TAG, "💥 EXCEPTION in syncUser!")
+                Log.e(TAG, "   - Exception Type: ${e.javaClass.simpleName}")
+                Log.e(TAG, "   - Message: ${e.message}")
+                Log.e(TAG, "   - Cause: ${e.cause?.message ?: "None"}")
+
+                when (e) {
+                    is java.net.UnknownHostException -> {
+                        Log.e(TAG, "   - Type: NETWORK ERROR - Cannot resolve hostname")
+                    }
+                    is java.net.SocketTimeoutException -> {
+                        Log.e(TAG, "   - Type: TIMEOUT ERROR")
+                    }
+                    is java.net.ConnectException -> {
+                        Log.e(TAG, "   - Type: CONNECTION ERROR")
+                    }
+                }
+
+                Log.e(TAG, "   - Stack Trace:", e)
+                Log.e(TAG, "════════════════════════════════════════")
             }
         }
     }

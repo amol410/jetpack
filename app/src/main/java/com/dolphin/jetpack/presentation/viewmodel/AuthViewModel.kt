@@ -12,6 +12,7 @@ import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.dolphin.jetpack.util.AnalyticsHelper
+import com.dolphin.jetpack.data.remote.UserSyncManager
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
@@ -30,12 +31,17 @@ sealed class AuthState {
 
 class AuthViewModel : ViewModel() {
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private var userSyncManager: UserSyncManager? = null
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
     init {
         checkAuthState()
+    }
+
+    fun initializeUserSync(context: Context) {
+        userSyncManager = UserSyncManager.getInstance(context)
     }
 
     // Convert technical error messages to user-friendly ones
@@ -135,8 +141,22 @@ class AuthViewModel : ViewModel() {
                         val authResult = auth.signInWithCredential(firebaseCredential).await()
 
                         authResult.user?.let { user ->
+                            android.util.Log.d("AuthViewModel", "========================================")
+                            android.util.Log.d("AuthViewModel", "🔐 Google Sign-In Successful")
+                            android.util.Log.d("AuthViewModel", "   - Firebase UID: ${user.uid}")
+                            android.util.Log.d("AuthViewModel", "   - Email: ${user.email}")
+                            android.util.Log.d("AuthViewModel", "   - Display Name: ${user.displayName}")
+                            android.util.Log.d("AuthViewModel", "📤 Syncing user to backend...")
+
                             AnalyticsHelper.logLoginEvent("google")
                             AnalyticsHelper.setUserProperties(user.uid, user.email)
+
+                            // Sync user to backend
+                            userSyncManager?.syncUser()
+                            userSyncManager?.startSession()
+
+                            android.util.Log.d("AuthViewModel", "✅ User sync initiated")
+                            android.util.Log.d("AuthViewModel", "========================================")
                             _authState.value = AuthState.Authenticated(user)
                         } ?: run {
                             _authState.value = AuthState.Error("Unable to sign in. Please try again")
@@ -173,8 +193,21 @@ class AuthViewModel : ViewModel() {
                 val authResult = auth.createUserWithEmailAndPassword(email, password).await()
 
                 authResult.user?.let { user ->
+                    android.util.Log.d("AuthViewModel", "========================================")
+                    android.util.Log.d("AuthViewModel", "📧 Email Sign-Up Successful")
+                    android.util.Log.d("AuthViewModel", "   - Firebase UID: ${user.uid}")
+                    android.util.Log.d("AuthViewModel", "   - Email: ${user.email}")
+                    android.util.Log.d("AuthViewModel", "📤 Syncing user to backend...")
+
                     AnalyticsHelper.logSignUpEvent("email")
                     AnalyticsHelper.setUserProperties(user.uid, user.email)
+
+                    // Sync user to backend
+                    userSyncManager?.syncUser()
+                    userSyncManager?.startSession()
+
+                    android.util.Log.d("AuthViewModel", "✅ User sync initiated")
+                    android.util.Log.d("AuthViewModel", "========================================")
                     _authState.value = AuthState.Authenticated(user)
                 } ?: run {
                     _authState.value = AuthState.Error("Unable to create account. Please try again")
@@ -199,8 +232,21 @@ class AuthViewModel : ViewModel() {
                 val authResult = auth.signInWithEmailAndPassword(email, password).await()
 
                 authResult.user?.let { user ->
+                    android.util.Log.d("AuthViewModel", "========================================")
+                    android.util.Log.d("AuthViewModel", "📧 Email Sign-In Successful")
+                    android.util.Log.d("AuthViewModel", "   - Firebase UID: ${user.uid}")
+                    android.util.Log.d("AuthViewModel", "   - Email: ${user.email}")
+                    android.util.Log.d("AuthViewModel", "📤 Syncing user to backend...")
+
                     AnalyticsHelper.logLoginEvent("email")
                     AnalyticsHelper.setUserProperties(user.uid, user.email)
+
+                    // Sync user to backend
+                    userSyncManager?.syncUser()
+                    userSyncManager?.startSession()
+
+                    android.util.Log.d("AuthViewModel", "✅ User sync initiated")
+                    android.util.Log.d("AuthViewModel", "========================================")
                     _authState.value = AuthState.Authenticated(user)
                 } ?: run {
                     _authState.value = AuthState.Error("Unable to sign in. Please try again")

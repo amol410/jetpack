@@ -186,6 +186,14 @@ class QuizViewModel(
     ) {
         viewModelScope.launch {
             try {
+                android.util.Log.d("QuizViewModel", "========================================")
+                android.util.Log.d("QuizViewModel", "🎯 SAVING QUIZ ATTEMPT")
+                android.util.Log.d("QuizViewModel", "========================================")
+                android.util.Log.d("QuizViewModel", "Quiz Title: $quizTitle")
+                android.util.Log.d("QuizViewModel", "Score: $score/$totalQuestions (${(score * 100) / totalQuestions}%)")
+                android.util.Log.d("QuizViewModel", "Time Taken: ${timeTakenSeconds}s")
+                android.util.Log.d("QuizViewModel", "Question Answers: ${questionAnswers.size}")
+
                 val attempt = QuizAttempt(
                     quizTitle = quizTitle,
                     dateTime = System.currentTimeMillis(),
@@ -197,21 +205,59 @@ class QuizViewModel(
                     timerMinutes = timerMinutes
                 )
 
+                android.util.Log.d("QuizViewModel", "💾 Saving to local database...")
                 val attemptId = repository.saveQuizAttempt(attempt)
+                android.util.Log.d("QuizViewModel", "✅ Saved locally with ID: $attemptId")
 
                 // Update attemptId for all question answers
                 val updatedAnswers = questionAnswers.map { it.copy(attemptId = attemptId) }
                 repository.saveQuestionAnswers(updatedAnswers)
+                android.util.Log.d("QuizViewModel", "✅ Saved ${updatedAnswers.size} question answers")
 
                 // Sync with backend if user is authenticated
+                android.util.Log.d("QuizViewModel", "🔐 Checking authentication status...")
                 val currentUser = getCurrentUser()
+
                 if (currentUser != null) {
-                    repository.syncQuizAttempt(currentUser.uid, attempt)
+                    android.util.Log.d("QuizViewModel", "✅ User IS authenticated:")
+                    android.util.Log.d("QuizViewModel", "   - Firebase UID: ${currentUser.uid}")
+                    android.util.Log.d("QuizViewModel", "   - Email: ${currentUser.email ?: "N/A"}")
+                    android.util.Log.d("QuizViewModel", "   - Display Name: ${currentUser.displayName ?: "N/A"}")
+                    android.util.Log.d("QuizViewModel", "   - Is Anonymous: ${currentUser.isAnonymous}")
+                    android.util.Log.d("QuizViewModel", "📤 Starting backend sync...")
+
+                    val syncResult = repository.syncQuizAttempt(currentUser.uid, attempt.copy(id = attemptId, questionAnswers = updatedAnswers))
+                    syncResult.onSuccess { backendAttemptId ->
+                        android.util.Log.d("QuizViewModel", "========================================")
+                        android.util.Log.d("QuizViewModel", "✅ SUCCESS: Backend sync completed!")
+                        android.util.Log.d("QuizViewModel", "   - Backend Attempt ID: $backendAttemptId")
+                        android.util.Log.d("QuizViewModel", "========================================")
+                    }
+                    syncResult.onFailure { error ->
+                        android.util.Log.e("QuizViewModel", "========================================")
+                        android.util.Log.e("QuizViewModel", "❌ FAILED: Backend sync failed!")
+                        android.util.Log.e("QuizViewModel", "   - Error Type: ${error.javaClass.simpleName}")
+                        android.util.Log.e("QuizViewModel", "   - Error Message: ${error.message}")
+                        android.util.Log.e("QuizViewModel", "   - Stack Trace:", error)
+                        android.util.Log.e("QuizViewModel", "========================================")
+                    }
+                } else {
+                    android.util.Log.e("QuizViewModel", "========================================")
+                    android.util.Log.e("QuizViewModel", "❌ CRITICAL: User NOT authenticated!")
+                    android.util.Log.e("QuizViewModel", "   - FirebaseAuth.currentUser is NULL")
+                    android.util.Log.e("QuizViewModel", "   - Quiz attempt saved locally but NOT synced to backend")
+                    android.util.Log.e("QuizViewModel", "   - User needs to sign in to enable cloud sync")
+                    android.util.Log.e("QuizViewModel", "========================================")
                 }
 
                 // Delete quiz state after successful completion
                 deleteQuizState(quizTitle)
             } catch (e: Exception) {
+                android.util.Log.e("QuizViewModel", "========================================")
+                android.util.Log.e("QuizViewModel", "💥 EXCEPTION in saveQuizAttempt:")
+                android.util.Log.e("QuizViewModel", "   - Exception Type: ${e.javaClass.simpleName}")
+                android.util.Log.e("QuizViewModel", "   - Message: ${e.message}")
+                android.util.Log.e("QuizViewModel", "========================================", e)
                 _uiState.value = QuizUiState.Error(e.message ?: "Failed to save attempt")
             }
         }

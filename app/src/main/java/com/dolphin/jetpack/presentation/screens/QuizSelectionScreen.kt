@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dolphin.jetpack.domain.model.Quiz
 import com.dolphin.jetpack.presentation.viewmodel.QuizListViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +37,10 @@ fun QuizSelectionScreen(
 ) {
     var showTimerDialog by remember { mutableStateOf(false) }
     var selectedQuiz by remember { mutableStateOf<Quiz?>(null) }
+
+    // Snackbar state
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     // Observe ViewModel state
     val quizzes by quizListViewModel.quizzes.collectAsState()
@@ -60,45 +65,14 @@ fun QuizSelectionScreen(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { 
-                    Text(
-                        "Select Quiz", 
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold
-                    ) 
-                },
-                actions = {
-                    // Retry button when there's an error
-                    if (error != null) {
-                        IconButton(onClick = { quizListViewModel.retry() }) {
-                            Icon(
-                                Icons.Default.Refresh,
-                                contentDescription = "Retry"
-                            )
-                        }
-                    }
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(
-                            Icons.Default.Settings,
-                            contentDescription = "Settings"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            )
-        }
-    ) { padding ->
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        modifier = modifier.fillMaxSize()
+    ) { paddingValues ->
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+    ) {
             when {
                 // Show loading indicator
                 isLoading -> {
@@ -123,7 +97,7 @@ fun QuizSelectionScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = error ?: "Unknown error",
+                            text = "No Internet Connection",
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -144,8 +118,7 @@ fun QuizSelectionScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(quizzes.size) { index ->
-                        val quiz = quizzes[index]
+                    items(quizzes, key = { it.id }) { quiz ->
                         QuizCard(
                             quiz = quiz,
                             quizId = quiz.id,
@@ -163,12 +136,24 @@ fun QuizSelectionScreen(
                                 quizListViewModel.toggleQuizOffline(id, quiz.title, makeOffline)
                                 // Update local state immediately for responsiveness
                                 offlineStatusMap = offlineStatusMap + (id to makeOffline)
+                                // Show snackbar notification
+                                coroutineScope.launch {
+                                    val message = if (makeOffline) {
+                                        "Quiz saved for offline practice"
+                                    } else {
+                                        "Quiz removed from offline storage"
+                                    }
+                                    snackbarHostState.showSnackbar(
+                                        message = message,
+                                        duration = SnackbarDuration.Short
+                                    )
+                                }
                             }
                         )
                     }
                 }
             }
-        }
+    }
     }
 
     if (showTimerDialog && selectedQuiz != null) {

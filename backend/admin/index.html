@@ -249,7 +249,15 @@
             <!-- Questions Section -->
             <div id="questionsSection" class="content-section">
                 <div class="section-header">
-                    <button class="btn btn-primary" onclick="showAddQuestionModal()">+ Add Question</button>
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 15px;">
+                        <div style="flex: 1;">
+                            <label style="margin-right: 10px; font-weight: 600;">Filter by Quiz:</label>
+                            <select id="quizFilter" onchange="filterQuestionsByQuiz()" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; min-width: 250px;">
+                                <option value="">All Quizzes</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="showAddQuestionModal()">+ Add Question</button>
+                    </div>
                 </div>
                 <div class="card">
                     <div class="card-body">

@@ -126,7 +126,7 @@ data class QuizAttemptBackend(
     val total_questions: Int,
     val time_taken_seconds: Long,
     val percentage: Int,
-    val timer_enabled: Boolean,
+    val timer_enabled: Int,  // Backend returns 0/1, not true/false
     val timer_minutes: Int
 )
 
@@ -140,7 +140,7 @@ data class QuestionAnswerBackend(
     val question_text: String,
     val selected_answer: String,
     val correct_answer: String,
-    val is_correct: Boolean
+    val is_correct: Int  // Backend returns 0/1, not true/false
 )
 
 data class StatisticsData(

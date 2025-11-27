@@ -42,39 +42,22 @@ fun HistoryScreen(
     var showClearDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Quiz History") },
-                actions = {
-                    IconButton(onClick = { showFilterDialog = true }) {
-                        Icon(Icons.Default.FilterList, "Filter")
-                    }
-                    IconButton(onClick = {
-                        if (historyState is HistoryUiState.Success) {
-                            val attempts = (historyState as HistoryUiState.Success).attempts
-                            val csvData = HistoryExporter.exportToCsv(attempts)
-                            val sendIntent: Intent = Intent().apply {
-                                action = Intent.ACTION_SEND
-                                putExtra(Intent.EXTRA_TEXT, csvData)
-                                type = "text/csv"
-                            }
-                            val shareIntent = Intent.createChooser(sendIntent, null)
-                            context.startActivity(shareIntent)
-                        }
-                    }) {
-                        Icon(Icons.Default.Share, "Export")
-                    }
-                }
-            )
+    // Sync history from backend when screen is opened
+    LaunchedEffect(Unit) {
+        val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            android.util.Log.d("HistoryScreen", "🔄 Syncing history from backend for user: ${currentUser.uid}")
+            viewModel.loadRemoteHistory(currentUser.uid)
+        } else {
+            android.util.Log.w("HistoryScreen", "⚠️ User not authenticated - showing local history only")
+            viewModel.loadHistory()
         }
-    ) { padding ->
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            when (val state = historyState) {
+    }
+
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
+        when (val state = historyState) {
                 is HistoryUiState.Loading -> {
                     CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center)
@@ -182,52 +165,41 @@ fun HistoryScreen(
                             modifier = Modifier
                                 .size(120.dp)
                                 .background(
-                                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                                     shape = CircleShape
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Warning,
+                                imageVector = Icons.Default.AccessTime,
                                 contentDescription = null,
                                 modifier = Modifier
                                     .size(64.dp),
-                                tint = MaterialTheme.colorScheme.error
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
-                        
+
                         Spacer(modifier = Modifier.height(24.dp))
-                        
+
                         Text(
-                            text = "Failed to Load History",
+                            text = "No Quiz History Yet",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center
                         )
-                        
-                        if (!state.message.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            Text(
-                                text = "No history data available: ${state.message}. Try again!",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                        } else {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            Text(
-                                text = "Check your connection and try again",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                        
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "You haven't solved any quizzes yet, who knows?",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+
                         Spacer(modifier = Modifier.height(24.dp))
-                        
+
                         Button(
                             onClick = { viewModel.loadHistory() }
                         ) {
@@ -236,7 +208,6 @@ fun HistoryScreen(
                     }
                 }
             }
-        }
     }
 
     if (showClearDialog) {

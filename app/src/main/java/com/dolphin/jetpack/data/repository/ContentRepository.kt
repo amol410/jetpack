@@ -107,7 +107,7 @@ class ContentRepository(
                 }
             }
 
-            NetworkResult.Error(e.message ?: "Network error occurred")
+            NetworkResult.Error("No Internet Connection")
         }
     }
 
@@ -140,7 +140,7 @@ class ContentRepository(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Exception: ${e.message}", e)
-            NetworkResult.Error(e.message ?: "Network error occurred")
+            NetworkResult.Error("No Internet Connection")
         }
     }
 
@@ -220,7 +220,7 @@ class ContentRepository(
                 }
             }
 
-            NetworkResult.Error(e.message ?: "Network error occurred")
+            NetworkResult.Error("No Internet Connection")
         }
     }
 
@@ -291,7 +291,7 @@ class ContentRepository(
                 }
             }
 
-            NetworkResult.Error(e.message ?: "Network error occurred")
+            NetworkResult.Error("No Internet Connection")
         }
     }
 
@@ -365,7 +365,7 @@ class ContentRepository(
                 }
             }
 
-            NetworkResult.Error(e.message ?: "Network error occurred")
+            NetworkResult.Error("No Internet Connection")
         }
     }
 
@@ -443,6 +443,8 @@ class ContentRepository(
                                 try {
                                     when (val notesResult = getNotes(topic.id)) {
                                         is NetworkResult.Success -> {
+                                            // Save notes to database for offline access
+                                            cacheNotesToDatabase(notesResult.data)
                                             Log.d(TAG, "Cached ${notesResult.data.size} notes for topic: ${topic.title}")
                                         }
                                         is NetworkResult.Error -> {
@@ -523,5 +525,35 @@ class ContentRepository(
             Log.e(TAG, "Failed to cache chapter: ${e.message}", e)
             // Don't throw exception, just log it - caching is not critical
         }
+    }
+
+    // Cache notes to local database for offline access
+    private suspend fun cacheNotesToDatabase(notes: List<Note>) = withContext(Dispatchers.IO) {
+        if (noteDao == null) return@withContext
+
+        try {
+            val noteEntities = notes.map { note ->
+                NoteEntity(
+                    id = note.id,
+                    topicId = note.topicId,
+                    title = note.title,
+                    content = note.content,
+                    orderIndex = note.orderIndex,
+                    topicTitle = note.topicTitle,
+                    chapterId = note.chapterId,
+                    chapterTitle = note.chapterTitle,
+                    lastUpdated = System.currentTimeMillis()
+                )
+            }
+            noteDao.insertNotes(noteEntities)
+            Log.d(TAG, "Cached ${noteEntities.size} notes to database")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to cache notes to database: ${e.message}", e)
+        }
+    }
+
+    // Auto-cache notes when user views them
+    suspend fun cacheNotesOnView(notes: List<Note>) = withContext(Dispatchers.IO) {
+        cacheNotesToDatabase(notes)
     }
 }

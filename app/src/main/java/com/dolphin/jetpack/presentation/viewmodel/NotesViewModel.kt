@@ -177,6 +177,8 @@ class NotesViewModel(
                 is NetworkResult.Success -> {
                     lastLoadedNotes = result.data
                     _notes.value = result.data
+                    // Auto-cache notes when user views them
+                    repository.cacheNotesOnView(result.data)
                     // Note: Repository returns Success even when loading from cache
                     // We can't distinguish between online and offline success here
                 }

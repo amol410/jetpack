@@ -56,11 +56,11 @@ private val DarkColorScheme = darkColorScheme(
     onTertiary = Color(0xFF5A1711),
     tertiaryContainer = Color(0xFF7D2D22),
     onTertiaryContainer = Color(0xFFFFDBCF),
-    background = Color(0xFF191C1D),
+    background = Color(0xFF1A1820),           // Subtle purple tint for dark (was #191C1D)
     onBackground = Color(0xFFE1E3E3),
-    surface = Color(0xFF191C1D),
+    surface = Color(0xFF1A1820),              // Subtle purple tint for dark (was #191C1D)
     onSurface = Color(0xFFE1E3E3),
-    surfaceVariant = Color(0xFF48464C),
+    surfaceVariant = Color(0xFF4B3F90),       // More vibrant purple (same as primaryContainer)
     onSurfaceVariant = Color(0xFFCAC5D0),
     error = Color(0xFFFFB4AB),
     onError = Color(0xFF690005),
@@ -78,7 +78,7 @@ private val DarkColorScheme = darkColorScheme(
 fun JetpackTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

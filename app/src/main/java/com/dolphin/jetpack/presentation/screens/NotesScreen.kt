@@ -50,6 +50,10 @@ fun NotesScreen(
     }
     var showChapterList by remember { mutableStateOf(false) }
 
+    // Snackbar state
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
     // Observe ViewModel state
     val chapters by notesViewModel.chapters.collectAsState()
     val isLoading by notesViewModel.isLoading.collectAsState()
@@ -66,9 +70,14 @@ fun NotesScreen(
         }
     }
 
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        modifier = modifier.fillMaxSize()
+    ) { paddingValues ->
     Box(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
+            .padding(paddingValues)
             .background(MaterialTheme.colorScheme.background)
     ) {
         // Show loading indicator
@@ -157,7 +166,8 @@ fun NotesScreen(
                                 onChapterSelected(chapter.id) // Notify parent of the change
                                 showChapterList = false
                             },
-                            viewModel = notesViewModel
+                            viewModel = notesViewModel,
+                            snackbarHostState = snackbarHostState
                         )
                     } else {
                         // Show only topics with a change chapter button on the right
@@ -228,6 +238,7 @@ fun NotesScreen(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -235,7 +246,8 @@ fun ChapterListView(
     chapters: List<Chapter>,
     selectedChapter: Chapter?,
     onChapterSelected: (Chapter) -> Unit,
-    viewModel: com.dolphin.jetpack.presentation.viewmodel.NotesViewModel
+    viewModel: com.dolphin.jetpack.presentation.viewmodel.NotesViewModel,
+    snackbarHostState: SnackbarHostState
 ) {
     // Track manually downloaded status for each chapter
     var offlineStatusMap by remember { mutableStateOf<Map<Int, Boolean>>(emptyMap()) }
@@ -272,6 +284,16 @@ fun ChapterListView(
                     // Update local state immediately for responsiveness
                     coroutineScope.launch {
                         offlineStatusMap = offlineStatusMap + (chapter.id to makeOffline)
+                        // Show snackbar notification
+                        val message = if (makeOffline) {
+                            "Chapter saved for offline reading"
+                        } else {
+                            "Chapter removed from offline storage"
+                        }
+                        snackbarHostState.showSnackbar(
+                            message = message,
+                            duration = SnackbarDuration.Short
+                        )
                     }
                 }
             )

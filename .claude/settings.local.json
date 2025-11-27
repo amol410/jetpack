@@ -23,7 +23,16 @@
       "Bash(timeout 10 dir:*)",
       "Bash(nul)",
       "Bash(del /f \"C:\\Users\\Admin\\AndroidStudioProjects\\Jetpack\\app\\build\\outputs\\apk\\debug\\nul\" 2)",
-      "Bash(del /f nul 2)"
+      "Bash(del /f nul 2)",
+      "WebSearch",
+      "Bash(cmd /c \"del /f nul 2>nul\")",
+      "Bash(cat:*)",
+      "Bash(node -c:*)",
+      "Bash(php:*)",
+      "Bash(\"C:\\Users\\Admin\\AndroidStudioProjects\\Jetpack\\BACKEND_SYNC_DEBUG.md\")",
+      "Bash(timeout 120 ./gradlew.bat assembleDebug --quiet)",
+      "Bash(netstat:*)",
+      "Bash(tasklist:*)"
     ],
     "deny": [],
     "ask": []

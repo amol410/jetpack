@@ -45,24 +45,14 @@ fun StatisticsScreen(
     modifier: Modifier = Modifier
 ) {
     val statsState by viewModel.statsState.collectAsState()
+    var showSnackbar by remember { mutableStateOf(false) }
+    var snackbarMessage by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Statistics") },
-                actions = {
-                    IconButton(onClick = { viewModel.refresh() }) {
-                        Icon(Icons.Default.Refresh, "Refresh")
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
             when (val state = statsState) {
                 is StatisticsUiState.Loading -> {
                     CircularProgressIndicator(
@@ -90,7 +80,7 @@ fun StatisticsScreen(
                             )
                         }
 
-                        items(state.statistics.quizWisePerformance) { performance ->
+                        items(state.statistics.quizWisePerformance, key = { it.quizTitle }) { performance ->
                             QuizPerformanceCard(performance)
                         }
 
@@ -105,7 +95,7 @@ fun StatisticsScreen(
                                 )
                             }
 
-                            items(state.statistics.mostWrongQuestions.take(5)) { wrongQ ->
+                            items(state.statistics.mostWrongQuestions.take(5), key = { it.questionText }) { wrongQ ->
                                 WrongQuestionCard(wrongQ)
                             }
                         }
@@ -204,64 +194,67 @@ fun StatisticsScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        // Custom illustration using Compose shapes
+                        // Custom illustration using Compose shapes (same as Empty state)
                         Box(
                             modifier = Modifier
                                 .size(120.dp)
                                 .background(
-                                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                                     shape = CircleShape
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Warning,
+                                imageVector = Icons.Default.TrendingUp,
                                 contentDescription = null,
                                 modifier = Modifier
                                     .size(64.dp),
-                                tint = MaterialTheme.colorScheme.error
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
-                        
+
                         Spacer(modifier = Modifier.height(24.dp))
-                        
+
                         Text(
-                            text = "Failed to Load Statistics",
+                            text = "No Statistics Available",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center
                         )
-                        
-                        if (!state.message.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            Text(
-                                text = "No statistics data available: ${state.message}. Try again!",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                        } else {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            Text(
-                                text = "Check your connection and try again",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                        
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "You haven't solved any quizzes yet, who knows?",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+
                         Spacer(modifier = Modifier.height(24.dp))
-                        
+
                         Button(
                             onClick = { viewModel.refresh() }
                         ) {
-                            Text("Try Again")
+                            Text("Refresh")
                         }
                     }
                 }
+            }
+
+        if (showSnackbar) {
+            LaunchedEffect(snackbarMessage) {
+                kotlinx.coroutines.delay(2000)
+                showSnackbar = false
+            }
+
+            Snackbar(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp)
+            ) {
+                Text(snackbarMessage)
             }
         }
     }

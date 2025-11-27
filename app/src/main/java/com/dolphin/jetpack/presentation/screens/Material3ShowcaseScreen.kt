@@ -28,10 +28,15 @@ fun Material3ShowcaseScreen(
 ) {
     var selectedCategory by remember { mutableStateOf<ShowcaseCategory?>(null) }
 
+    // Initialize AdManager
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val adManager = remember { com.dolphin.jetpack.ads.AdManager(context) }
+
     if (selectedCategory != null) {
         ComponentDetailScreen(
             category = selectedCategory!!,
-            onBackClick = { selectedCategory = null }
+            onBackClick = { selectedCategory = null },
+            adManager = adManager
         )
     } else {
         Scaffold(
@@ -128,8 +133,14 @@ fun ShowcaseCategoryCard(
 @Composable
 fun ComponentDetailScreen(
     category: ShowcaseCategory,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    adManager: com.dolphin.jetpack.ads.AdManager
 ) {
+    // Track component view when screen is first composed
+    LaunchedEffect(category) {
+        adManager.onComponentViewed()
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         // TopAppBar as a direct component (not in Scaffold)
         TopAppBar(

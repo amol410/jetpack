@@ -74,7 +74,7 @@ class QuizListViewModel(
             } catch (e: Exception) {
                 // Remove from downloading set on error
                 _downloadingQuizzes.value = _downloadingQuizzes.value - quizId
-                _error.value = "Failed to toggle offline status: ${e.message}"
+                _error.value = "Failed to download quiz. Please check your internet connection."
             }
         }
     }

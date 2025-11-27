@@ -31,14 +31,14 @@ val OnTertiaryLight = Color(0xFFFFFFFF)
 val TertiaryContainerLight = Color(0xFFFFDBCF)  // Light coral
 val OnTertiaryContainerLight = Color(0xFF390003) // Dark coral
 
-// Surface and background colors - Clean modern background
-val BackgroundLight = Color(0xFFFBFCFE)        // Very light blueish
+// Surface and background colors - Clean modern background with purple tint
+val BackgroundLight = Color(0xFFF5F3F9)        // Subtle purple tint (was #FBFCFE)
 val OnBackgroundLight = Color(0xFF191C1D)
-val SurfaceLight = Color(0xFFFBFCFE)
+val SurfaceLight = Color(0xFFF5F3F9)           // Subtle purple tint (was #FBFCFE)
 val OnSurfaceLight = Color(0xFF191C1D)
-val SurfaceVariantLight = Color(0xFFE7E0EB)
+val SurfaceVariantLight = Color(0xFFE6DEFF)    // More vibrant purple (same as primaryContainer)
 val OnSurfaceVariantLight = Color(0xFF48464C)
-val SurfaceContainerLow = Color(0xFFF5F3F7)   // Light surface container
+val SurfaceContainerLow = Color(0xFFF0EDFF)    // Light purple (was #F5F3F7)
 
 // Error colors - Modern red
 val ErrorLight = Color(0xFFD32F2F)            // Vibrant error red

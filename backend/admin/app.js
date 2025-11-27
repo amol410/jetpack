@@ -792,6 +792,7 @@ async function loadQuestions() {
 
         if (data.success) {
             questions = data.data;
+            populateQuizFilter();
             renderQuestions();
         }
     } catch (error) {
@@ -799,9 +800,43 @@ async function loadQuestions() {
     }
 }
 
-function renderQuestions() {
+function populateQuizFilter() {
+    const filterSelect = document.getElementById('quizFilter');
+    if (!filterSelect) return;
+
+    // Get unique quizzes from questions
+    const uniqueQuizzes = [...new Map(questions.map(q => [q.quiz_id, {id: q.quiz_id, title: q.quiz_title}])).values()];
+
+    // Sort by title
+    uniqueQuizzes.sort((a, b) => a.title.localeCompare(b.title));
+
+    // Populate dropdown
+    filterSelect.innerHTML = '<option value="">All Quizzes</option>' +
+        uniqueQuizzes.map(quiz => `<option value="${quiz.id}">${quiz.title}</option>`).join('');
+}
+
+function filterQuestionsByQuiz() {
+    const filterSelect = document.getElementById('quizFilter');
+    const selectedQuizId = filterSelect.value;
+
+    if (selectedQuizId === '') {
+        // Show all questions
+        renderQuestions();
+    } else {
+        // Filter and render only selected quiz questions
+        renderQuestions(parseInt(selectedQuizId));
+    }
+}
+
+function renderQuestions(filterByQuizId = null) {
     const tbody = document.getElementById('questionsTable');
-    tbody.innerHTML = questions.map(q => {
+
+    // Filter questions if quiz ID is provided
+    const filteredQuestions = filterByQuizId
+        ? questions.filter(q => q.quiz_id === filterByQuizId)
+        : questions;
+
+    tbody.innerHTML = filteredQuestions.map(q => {
         const options = [q.option_a, q.option_b, q.option_c, q.option_d];
         const correctAnswer = options[q.correct_answer_index];
 
@@ -957,12 +992,212 @@ function editTopic(id) {
     alert('Edit topic functionality - implement similarly to add');
 }
 
-function editQuiz(id) {
-    alert('Edit quiz functionality - implement similarly to add');
+async function editQuiz(id) {
+    const quiz = quizzes.find(q => q.id === id);
+    if (!quiz) return;
+
+    // Load chapters and topics for dropdown
+    if (chapters.length === 0) {
+        await loadChapters();
+    }
+    if (topics.length === 0) {
+        await loadTopics();
+    }
+
+    const modal = `
+        <div class="modal-overlay" onclick="closeModal(event)">
+            <div class="modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h2>Edit Quiz</h2>
+                    <button class="modal-close" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="quizForm">
+                        <input type="hidden" id="quizId" value="${quiz.id}">
+                        <div class="form-group">
+                            <label>Title *</label>
+                            <input type="text" id="quizTitle" value="${quiz.title}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea id="quizDescription">${quiz.description || ''}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Chapter (Optional)</label>
+                            <select id="quizChapter">
+                                <option value="">None</option>
+                                ${chapters.map(ch => `<option value="${ch.id}" ${quiz.chapter_id == ch.id ? 'selected' : ''}>${ch.title}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Topic (Optional)</label>
+                            <select id="quizTopic">
+                                <option value="">None</option>
+                                ${topics.map(t => `<option value="${t.id}" ${quiz.topic_id == t.id ? 'selected' : ''}>${t.chapter_title} → ${t.title}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Order</label>
+                            <input type="number" id="quizOrder" value="${quiz.order_index}">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="updateQuiz()">Update Quiz</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.getElementById('modalContainer').innerHTML = modal;
 }
 
-function editQuestion(id) {
-    alert('Edit question functionality - implement similarly to add');
+async function updateQuiz() {
+    const id = document.getElementById('quizId').value;
+    const title = document.getElementById('quizTitle').value;
+    const description = document.getElementById('quizDescription').value;
+    const chapter_id = document.getElementById('quizChapter').value || null;
+    const topic_id = document.getElementById('quizTopic').value || null;
+    const order_index = document.getElementById('quizOrder').value;
+
+    if (!title) {
+        alert('Please enter a title');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/quizzes.php`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, title, description, chapter_id, topic_id, order_index })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            closeModal();
+            loadQuizzes();
+            alert('Quiz updated successfully!');
+        } else {
+            alert('Failed to update quiz: ' + data.message);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+async function editQuestion(id) {
+    const question = questions.find(q => q.id === id);
+    if (!question) return;
+
+    // Load quizzes for dropdown
+    if (quizzes.length === 0) {
+        await loadQuizzes();
+    }
+
+    const modal = `
+        <div class="modal-overlay" onclick="closeModal(event)">
+            <div class="modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h2>Edit Question</h2>
+                    <button class="modal-close" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="questionForm">
+                        <input type="hidden" id="questionId" value="${question.id}">
+                        <div class="form-group">
+                            <label>Quiz *</label>
+                            <select id="questionQuizId" required>
+                                ${quizzes.map(qz => `<option value="${qz.id}" ${question.quiz_id == qz.id ? 'selected' : ''}>${qz.title}</option>`).join('')}
+                            </select>
+                            <small class="help-text">You can change which quiz this question belongs to</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Question *</label>
+                            <textarea id="questionText" required>${question.question_text}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Option A *</label>
+                            <input type="text" id="questionOptionA" value="${question.option_a}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Option B *</label>
+                            <input type="text" id="questionOptionB" value="${question.option_b}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Option C *</label>
+                            <input type="text" id="questionOptionC" value="${question.option_c}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Option D *</label>
+                            <input type="text" id="questionOptionD" value="${question.option_d}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Correct Answer *</label>
+                            <select id="questionCorrectAnswer" required>
+                                <option value="0" ${question.correct_answer_index === 0 ? 'selected' : ''}>A</option>
+                                <option value="1" ${question.correct_answer_index === 1 ? 'selected' : ''}>B</option>
+                                <option value="2" ${question.correct_answer_index === 2 ? 'selected' : ''}>C</option>
+                                <option value="3" ${question.correct_answer_index === 3 ? 'selected' : ''}>D</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Explanation</label>
+                            <textarea id="questionExplanation">${question.explanation || ''}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Order</label>
+                            <input type="number" id="questionOrder" value="${question.order_index}">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="updateQuestion()">Update Question</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.getElementById('modalContainer').innerHTML = modal;
+}
+
+async function updateQuestion() {
+    const id = document.getElementById('questionId').value;
+    const quiz_id = document.getElementById('questionQuizId').value;
+    const question_text = document.getElementById('questionText').value;
+    const option_a = document.getElementById('questionOptionA').value;
+    const option_b = document.getElementById('questionOptionB').value;
+    const option_c = document.getElementById('questionOptionC').value;
+    const option_d = document.getElementById('questionOptionD').value;
+    const correct_answer_index = parseInt(document.getElementById('questionCorrectAnswer').value);
+    const explanation = document.getElementById('questionExplanation').value;
+    const order_index = document.getElementById('questionOrder').value;
+
+    if (!question_text || !option_a || !option_b || !option_c || !option_d) {
+        alert('Please fill in all required fields');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/questions.php`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id, quiz_id, question_text, option_a, option_b, option_c, option_d,
+                correct_answer_index, explanation, order_index
+            })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            closeModal();
+            loadQuestions();
+            alert('Question updated successfully!');
+        } else {
+            alert('Failed to update question: ' + data.message);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
 }
 
 // Modal helper

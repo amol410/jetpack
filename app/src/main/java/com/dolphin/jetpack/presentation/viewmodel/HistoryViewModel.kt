@@ -75,35 +75,50 @@ class HistoryViewModel(
 
     fun loadRemoteHistory(firebaseUid: String) {
         viewModelScope.launch {
+            android.util.Log.d("HistoryViewModel", "========================================")
+            android.util.Log.d("HistoryViewModel", "📥 LOADING REMOTE HISTORY")
+            android.util.Log.d("HistoryViewModel", "   - Firebase UID: $firebaseUid")
+
             // First, immediately show local data if available (optimistic UI)
             try {
                 val localAttempts = repository.getAllAttempts().first()
                 lastLocalHistory = localAttempts
+                android.util.Log.d("HistoryViewModel", "   - Local attempts found: ${localAttempts.size}")
                 if (localAttempts.isNotEmpty()) {
                     // Show local data immediately while fetching remote data in background
                     _historyState.value = HistoryUiState.Success(localAttempts)
+                    android.util.Log.d("HistoryViewModel", "   - Showing local data first")
                 }
             } catch (e: Exception) {
+                android.util.Log.e("HistoryViewModel", "   - Error loading local data: ${e.message}")
                 // If even local data fails, show loading state
                 _historyState.value = HistoryUiState.Loading
             }
-            
+
             // Then, fetch remote data in the background
+            android.util.Log.d("HistoryViewModel", "📡 Fetching from backend...")
             try {
                 val remoteResult = repository.syncAllQuizAttempts(firebaseUid)
                 remoteResult.fold(
                     onSuccess = { attempts ->
+                        android.util.Log.d("HistoryViewModel", "✅ Backend sync SUCCESS!")
+                        android.util.Log.d("HistoryViewModel", "   - Remote attempts: ${attempts.size}")
                         // Update with fresh remote data
                         _historyState.value = if (attempts.isEmpty()) {
+                            android.util.Log.d("HistoryViewModel", "   - No attempts in backend")
                             HistoryUiState.Empty
                         } else {
+                            android.util.Log.d("HistoryViewModel", "   - Displaying ${attempts.size} attempts")
                             HistoryUiState.Success(attempts)
                         }
+                        android.util.Log.d("HistoryViewModel", "========================================")
                     },
                     onFailure = { error ->
+                        android.util.Log.e("HistoryViewModel", "❌ Backend sync FAILED: ${error.message}")
                         // If remote fails, check if it's a "no data" scenario or actual error
                         if (lastLocalHistory.isNotEmpty()) {
                             // Show local data if available
+                            android.util.Log.d("HistoryViewModel", "   - Showing local data as fallback")
                             _historyState.value = HistoryUiState.Success(lastLocalHistory)
                         } else {
                             // Check if error message indicates "no data" vs actual error
@@ -113,16 +128,21 @@ class HistoryViewModel(
                                                error.message?.contains("empty", ignoreCase = true) == true
 
                             _historyState.value = if (isNoDataError) {
+                                android.util.Log.d("HistoryViewModel", "   - No data found (expected)")
                                 HistoryUiState.Empty
                             } else {
+                                android.util.Log.e("HistoryViewModel", "   - Actual error occurred")
                                 HistoryUiState.Error("Failed to load data: ${error.message}")
                             }
                         }
+                        android.util.Log.d("HistoryViewModel", "========================================")
                     }
                 )
             } catch (e: Exception) {
+                android.util.Log.e("HistoryViewModel", "💥 EXCEPTION: ${e.message}", e)
                 // If remote sync fails, keep showing local data or show appropriate state
                 if (lastLocalHistory.isNotEmpty()) {
+                    android.util.Log.d("HistoryViewModel", "   - Showing local data as fallback")
                     _historyState.value = HistoryUiState.Success(lastLocalHistory)
                 } else {
                     // Check if exception indicates "no data" vs actual error
@@ -132,11 +152,14 @@ class HistoryViewModel(
                                        e.message?.contains("empty", ignoreCase = true) == true
 
                     _historyState.value = if (isNoDataError) {
+                        android.util.Log.d("HistoryViewModel", "   - No data found (expected)")
                         HistoryUiState.Empty
                     } else {
+                        android.util.Log.e("HistoryViewModel", "   - Actual error occurred")
                         HistoryUiState.Error("Failed to load data: ${e.message}")
                     }
                 }
+                android.util.Log.d("HistoryViewModel", "========================================")
             }
         }
     }

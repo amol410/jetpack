@@ -300,17 +300,38 @@ class QuizRepositoryImpl(
 
     override suspend fun syncAllQuizAttempts(firebaseUid: String): Result<List<QuizAttempt>> {
         return try {
+            android.util.Log.d("QuizRepository", "🔄 Syncing all quiz attempts for: $firebaseUid")
+
             // Get from remote backend
             val remoteResult = quizRemoteRepository.getUserQuizAttempts(firebaseUid)
             remoteResult.onSuccess { remoteAttempts ->
-                // Optionally sync these to local database as well
-                // For now, just return the remote attempts
-                return@onSuccess
+                android.util.Log.d("QuizRepository", "   - Remote attempts fetched: ${remoteAttempts.size}")
+
+                // Get local attempts
+                val localAttempts = quizAttemptDao.getAllAttemptsSync().map { it.toDomain() }
+                android.util.Log.d("QuizRepository", "   - Local attempts found: ${localAttempts.size}")
+
+                // Deduplicate: prefer remote attempts, but include local-only attempts
+                // Group by unique key: quizTitle + dateTime + score (to identify same attempt)
+                val allAttempts = (remoteAttempts + localAttempts)
+                    .distinctBy { "${it.quizTitle}_${it.dateTime}_${it.score}_${it.totalQuestions}" }
+                    .sortedByDescending { it.dateTime }
+
+                android.util.Log.d("QuizRepository", "   - Merged & deduplicated: ${allAttempts.size} total")
+
+                // Return the merged and deduplicated list
+                return Result.success(allAttempts)
+            }
+            remoteResult.onFailure { error ->
+                android.util.Log.e("QuizRepository", "   - Remote fetch failed: ${error.message}")
             }
             remoteResult
         } catch (e: Exception) {
+            android.util.Log.e("QuizRepository", "   - Exception during sync: ${e.message}", e)
             // Fallback to local data if remote sync fails
-            Result.success(quizAttemptDao.getAllAttemptsSync().map { it.toDomain() })
+            val localAttempts = quizAttemptDao.getAllAttemptsSync().map { it.toDomain() }
+            android.util.Log.d("QuizRepository", "   - Fallback to local: ${localAttempts.size} attempts")
+            Result.success(localAttempts)
         }
     }
 

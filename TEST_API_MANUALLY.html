@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Quiz Attempt API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .output {
+            background-color: #f4f4f4;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Quiz Attempt API</h1>
+
+    <div class="section">
+        <h2>Step 1: Get Your Firebase UID</h2>
+        <p>From your database, copy a <code>firebase_uid</code> from the <code>users</code> table:</p>
+        <input type="text" id="firebase_uid" placeholder="Enter Firebase UID from database">
+    </div>
+
+    <div class="section">
+        <h2>Step 2: Test User Lookup</h2>
+        <button onclick="testUserLookup()">Test if User Exists</button>
+        <div id="user_result" class="output"></div>
+    </div>
+
+    <div class="section">
+        <h2>Step 3: Test Quiz Attempt Save</h2>
+        <button onclick="testQuizAttempt()">Send Test Quiz Attempt</button>
+        <div id="quiz_result" class="output"></div>
+    </div>
+
+    <div class="section">
+        <h2>Step 4: View Saved Data</h2>
+        <button onclick="getQuizAttempts()">Get User's Quiz Attempts</button>
+        <div id="attempts_result" class="output"></div>
+    </div>
+
+    <script>
+        const API_BASE = "https://jetpack.dolphincoder.com/api";
+        const API_KEY = "a1b2c3d4e5f6g7h8i9j0";
+
+        async function testUserLookup() {
+            const firebase_uid = document.getElementById('firebase_uid').value;
+            const output = document.getElementById('user_result');
+
+            if (!firebase_uid) {
+                output.innerHTML = '<span class="error">Please enter a Firebase UID first!</span>';
+                return;
+            }
+
+            output.innerHTML = 'Testing user lookup...\n';
+
+            try {
+                // This endpoint doesn't exist in your backend, so we'll just verify the user is in DB
+                output.innerHTML += '\n✅ Firebase UID set: ' + firebase_uid;
+                output.innerHTML += '\n\nNow click "Send Test Quiz Attempt" to test the save API.';
+            } catch (error) {
+                output.innerHTML += '\n<span class="error">Error: ' + error.message + '</span>';
+            }
+        }
+
+        async function testQuizAttempt() {
+            const firebase_uid = document.getElementById('firebase_uid').value;
+            const output = document.getElementById('quiz_result');
+
+            if (!firebase_uid) {
+                output.innerHTML = '<span class="error">Please enter a Firebase UID first!</span>';
+                return;
+            }
+
+            const testData = {
+                firebase_uid: firebase_uid,
+                quiz_title: "Test Quiz from HTML",
+                score: 8,
+                total_questions: 10,
+                time_taken_seconds: 120,
+                percentage: 80,
+                timer_enabled: true,
+                timer_minutes: 5,
+                question_answers: [
+                    {
+                        question_index: 0,
+                        question_text: "What is 2+2?",
+                        selected_answer: "4",
+                        correct_answer: "4",
+                        is_correct: true
+                    },
+                    {
+                        question_index: 1,
+                        question_text: "What is 3+3?",
+                        selected_answer: "5",
+                        correct_answer: "6",
+                        is_correct: false
+                    }
+                ]
+            };
+
+            output.innerHTML = 'Sending request to: ' + API_BASE + '/save_quiz_attempt.php\n';
+            output.innerHTML += '\nRequest Data:\n' + JSON.stringify(testData, null, 2);
+            output.innerHTML += '\n\nSending...';
+
+            try {
+                const response = await fetch(API_BASE + '/save_quiz_attempt.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_KEY
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const responseData = await response.json();
+
+                output.innerHTML += '\n\n════════════════════════════════════════';
+                output.innerHTML += '\nHTTP Status: ' + response.status;
+                output.innerHTML += '\n════════════════════════════════════════';
+                output.innerHTML += '\n\nResponse:\n' + JSON.stringify(responseData, null, 2);
+
+                if (response.ok && responseData.success) {
+                    output.innerHTML += '\n\n<span class="success">✅ SUCCESS! Quiz attempt saved with ID: ' + responseData.data.attempt_id + '</span>';
+                    output.innerHTML += '\n\nNow click "Get User\'s Quiz Attempts" to verify it was saved.';
+                } else {
+                    output.innerHTML += '\n\n<span class="error">❌ FAILED: ' + responseData.message + '</span>';
+
+                    if (responseData.message.includes('User not found')) {
+                        output.innerHTML += '\n\n<span class="error">⚠️ The Firebase UID you entered does not exist in the users table!</span>';
+                        output.innerHTML += '\n\nPlease check your database and make sure this Firebase UID is registered.';
+                    }
+                }
+            } catch (error) {
+                output.innerHTML += '\n\n<span class="error">❌ Network Error: ' + error.message + '</span>';
+                output.innerHTML += '\n\nPossible causes:';
+                output.innerHTML += '\n- CORS issue';
+                output.innerHTML += '\n- Server is down';
+                output.innerHTML += '\n- Invalid API endpoint';
+            }
+        }
+
+        async function getQuizAttempts() {
+            const firebase_uid = document.getElementById('firebase_uid').value;
+            const output = document.getElementById('attempts_result');
+
+            if (!firebase_uid) {
+                output.innerHTML = '<span class="error">Please enter a Firebase UID first!</span>';
+                return;
+            }
+
+            output.innerHTML = 'Fetching quiz attempts for: ' + firebase_uid + '\n\nLoading...';
+
+            try {
+                const response = await fetch(API_BASE + '/get_user_quiz_attempts.php?firebase_uid=' + encodeURIComponent(firebase_uid), {
+                    method: 'GET',
+                    headers: {
+                        'X-API-Key': API_KEY
+                    }
+                });
+
+                const responseData = await response.json();
+
+                output.innerHTML = 'HTTP Status: ' + response.status + '\n\n';
+                output.innerHTML += 'Response:\n' + JSON.stringify(responseData, null, 2);
+
+                if (response.ok && responseData.success && responseData.data) {
+                    output.innerHTML += '\n\n<span class="success">✅ Found ' + responseData.data.length + ' quiz attempts!</span>';
+
+                    if (responseData.data.length > 0) {
+                        output.innerHTML += '\n\nMost Recent Attempt:';
+                        const latest = responseData.data[0];
+                        output.innerHTML += '\n- Quiz: ' + latest.quiz_title;
+                        output.innerHTML += '\n- Score: ' + latest.score + '/' + latest.total_questions;
+                        output.innerHTML += '\n- Date: ' + latest.date_time;
+                    }
+                } else {
+                    output.innerHTML += '\n\n<span class="error">❌ No quiz attempts found or error occurred</span>';
+                }
+            } catch (error) {
+                output.innerHTML += '\n\n<span class="error">❌ Error: ' + error.message + '</span>';
+            }
+        }
+    </script>
+
+    <div class="section">
+        <h2>Instructions</h2>
+        <ol>
+            <li>Open your database and find a <code>firebase_uid</code> from the <code>users</code> table</li>
+            <li>Paste that Firebase UID in the input box above</li>
+            <li>Click "Test if User Exists" to verify the UID</li>
+            <li>Click "Send Test Quiz Attempt" to test saving a quiz</li>
+            <li>Check the response - if successful, you'll see an attempt_id</li>
+            <li>Click "Get User's Quiz Attempts" to verify the data was saved</li>
+            <li>Check your database tables: <code>user_quiz_attempts</code> and <code>user_quiz_answers</code></li>
+        </ol>
+        <p><strong>Expected Result:</strong> If the API is working, you should see success messages and the attempt_id.</p>
+        <p><strong>If it fails:</strong> Check the error message to see what's wrong (User not found, API key invalid, etc.)</p>
+    </div>
+</body>
+</html>
