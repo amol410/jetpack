@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
+import androidx.activity.compose.BackHandler
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,6 +36,11 @@ fun SettingsScreen(
     val themePreferences = remember { ThemePreferences(context) }
     val isDarkMode by themePreferences.isDarkModeFlow.collectAsState(initial = false)
     val coroutineScope = rememberCoroutineScope()
+
+    // Handle system back gesture - navigate back to quiz screen
+    BackHandler(enabled = true) {
+        onBack()
+    }
 
     Scaffold(
         topBar = {
