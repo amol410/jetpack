@@ -26,9 +26,14 @@ class ContentRepository(
     private val api = RetrofitClient.apiService
     private val TAG = "ContentRepository"
 
-    // Helper function to decode HTML entities
+    // Helper function to decode HTML entities with error handling
     private fun decodeHtml(text: String): String {
-        return Html.fromHtml(text, Html.FROM_HTML_MODE_LEGACY).toString()
+        return try {
+            Html.fromHtml(text, Html.FROM_HTML_MODE_LEGACY).toString()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to decode HTML: ${e.message}")
+            text // Return original text if decoding fails
+        }
     }
 
     suspend fun getChapters(): NetworkResult<List<Chapter>> = withContext(Dispatchers.IO) {

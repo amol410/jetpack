@@ -55,7 +55,11 @@ class QuizFCMService : FirebaseMessagingService() {
     }
 
     private fun showNotification(title: String, body: String, data: Map<String, String>) {
-        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as? NotificationManager
+        if (notificationManager == null) {
+            Log.e(TAG, "NotificationManager is null, cannot show notification")
+            return
+        }
 
         // Create notification channel for Android O and above
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -103,18 +107,25 @@ class QuizFCMService : FirebaseMessagingService() {
     }
 
     private fun handleDataPayload(data: Map<String, String>) {
-        // Handle custom data payload
-        // Example: trigger specific actions based on data
-        when (data["type"]) {
+        // Handle custom data payload with null-safe access
+        val type = data["type"]
+        if (type.isNullOrEmpty()) {
+            Log.w(TAG, "Notification type is null or empty")
+            return
+        }
+
+        when (type) {
             "new_quiz" -> {
-                Log.d(TAG, "New quiz available: ${data["quiz_title"]}")
+                val quizTitle = data["quiz_title"] ?: "Unknown Quiz"
+                Log.d(TAG, "New quiz available: $quizTitle")
                 // You can show a custom notification or update local data
             }
             "quiz_reminder" -> {
-                Log.d(TAG, "Quiz reminder for: ${data["quiz_title"]}")
+                val quizTitle = data["quiz_title"] ?: "Unknown Quiz"
+                Log.d(TAG, "Quiz reminder for: $quizTitle")
             }
             else -> {
-                Log.d(TAG, "Unknown notification type")
+                Log.d(TAG, "Unknown notification type: $type")
             }
         }
     }

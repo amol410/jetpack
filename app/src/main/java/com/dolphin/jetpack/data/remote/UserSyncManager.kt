@@ -28,7 +28,9 @@ class UserSyncManager(private val context: Context) {
             return
         }
 
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO + kotlinx.coroutines.CoroutineExceptionHandler { _, throwable ->
+            Log.e(TAG, "❌ Uncaught exception in user sync coroutine: ${throwable.message}", throwable)
+        }).launch {
             try {
                 Log.d(TAG, "════════════════════════════════════════")
                 Log.d(TAG, "🌐 USER REGISTRATION API CALL")
@@ -116,7 +118,9 @@ class UserSyncManager(private val context: Context) {
             return
         }
 
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO + kotlinx.coroutines.CoroutineExceptionHandler { _, throwable ->
+            Log.e(TAG, "❌ Uncaught exception in user sync coroutine: ${throwable.message}", throwable)
+        }).launch {
             try {
                 Log.d(TAG, "Starting session for user: ${currentUser.uid}")
                 val request = SessionStartRequest(
@@ -151,7 +155,9 @@ class UserSyncManager(private val context: Context) {
             return
         }
 
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO + kotlinx.coroutines.CoroutineExceptionHandler { _, throwable ->
+            Log.e(TAG, "❌ Uncaught exception in user sync coroutine: ${throwable.message}", throwable)
+        }).launch {
             try {
                 Log.d(TAG, "Ending session: $sessionId")
                 val request = SessionEndRequest(session_id = sessionId)

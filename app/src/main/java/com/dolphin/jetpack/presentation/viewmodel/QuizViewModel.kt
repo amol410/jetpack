@@ -190,7 +190,15 @@ class QuizViewModel(
                 android.util.Log.d("QuizViewModel", "🎯 SAVING QUIZ ATTEMPT")
                 android.util.Log.d("QuizViewModel", "========================================")
                 android.util.Log.d("QuizViewModel", "Quiz Title: $quizTitle")
-                android.util.Log.d("QuizViewModel", "Score: $score/$totalQuestions (${(score * 100) / totalQuestions}%)")
+
+                // Calculate percentage with divide-by-zero protection
+                val percentage = if (totalQuestions > 0) {
+                    (score * 100) / totalQuestions
+                } else {
+                    0
+                }
+
+                android.util.Log.d("QuizViewModel", "Score: $score/$totalQuestions ($percentage%)")
                 android.util.Log.d("QuizViewModel", "Time Taken: ${timeTakenSeconds}s")
                 android.util.Log.d("QuizViewModel", "Question Answers: ${questionAnswers.size}")
 
@@ -200,7 +208,7 @@ class QuizViewModel(
                     score = score,
                     totalQuestions = totalQuestions,
                     timeTakenSeconds = timeTakenSeconds,
-                    percentage = (score * 100) / totalQuestions,
+                    percentage = percentage,
                     timerEnabled = timerEnabled,
                     timerMinutes = timerMinutes
                 )

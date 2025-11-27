@@ -232,12 +232,17 @@ class QuizRepositoryImpl(
     }
 
     // Current user ID - needs to be set from the authentication system
+    // Made volatile for thread-safe visibility across threads
+    @Volatile
     private var currentUserId: String? = null
-    
+
+    // Synchronized for thread-safe write access
+    @Synchronized
     fun setCurrentUserId(userId: String?) {
         currentUserId = userId
     }
-    
+
+    // No synchronization needed for reads due to @Volatile
     private fun getCurrentUserId(): String? {
         return currentUserId
     }
