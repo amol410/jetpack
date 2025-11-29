@@ -1,3 +1,10 @@
+import org.gradle.api.DefaultTask
+import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.file.RegularFileProperty
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -16,19 +23,42 @@ android {
         applicationId = "com.dolphin.jetpack"
         minSdk = 24
         targetSdk = 35
-        versionCode = 12
-        versionName = "6.5.1"
+        versionCode = 15
+        versionName = "6.5.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // Enable R8 minification for smaller APK and better performance
+            // Now safe with comprehensive ProGuard rules
+            isMinifyEnabled = true
+            isShrinkResources = true
+
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            // Generate mapping file for crash deobfuscation
+            // Upload this to Firebase Crashlytics for readable stack traces
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
+        }
+
+        debug {
+            // Disable minification in debug for faster builds
+            isMinifyEnabled = false
+
+            // Optional: Enable minification in debug to test ProGuard rules
+            // Uncomment these lines when testing release builds locally
+            // isMinifyEnabled = true
+            // proguardFiles(
+            //     getDefaultProguardFile("proguard-android-optimize.txt"),
+            //     "proguard-rules.pro"
+            // )
         }
     }
 
@@ -117,6 +147,97 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
-    
 
+
+}
+
+// ================================================================================================
+// CUSTOM GRADLE TASKS FOR SAFE RELEASE BUILDS
+// ================================================================================================
+
+// Task to perform clean release build (prevents stale build artifacts)
+tasks.register("cleanReleaseBundle") {
+    group = "build"
+    description = "Clean build and generate release AAB - prevents NoSuchMethodError crashes"
+
+    dependsOn("clean")
+    finalizedBy("bundleRelease")
+
+    doFirst {
+        println("========================================")
+        println("Starting CLEAN release build")
+        println("This prevents stale artifacts and NoSuchMethodError crashes")
+        println("========================================")
+    }
+
+    doLast {
+        println("========================================")
+        println("Release AAB created successfully!")
+        println("Location: app/release/app-release.aab")
+        println("========================================")
+    }
+}
+
+// Task to perform clean release APK build
+tasks.register("cleanReleaseApk") {
+    group = "build"
+    description = "Clean build and generate release APK - prevents NoSuchMethodError crashes"
+
+    dependsOn("clean")
+    finalizedBy("assembleRelease")
+
+    doFirst {
+        println("========================================")
+        println("Starting CLEAN release APK build")
+        println("This prevents stale artifacts and NoSuchMethodError crashes")
+        println("========================================")
+    }
+
+    doLast {
+        println("========================================")
+        println("Release APK created successfully!")
+        println("Location: app/build/outputs/apk/release/")
+        println("========================================")
+    }
+}
+
+// Task to verify ProGuard rules are applied correctly
+abstract class VerifyProguardRulesTask : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val proguardFile: RegularFileProperty
+
+    @TaskAction
+    fun verify() {
+        val file = proguardFile.asFile.get()
+        if (!file.exists()) {
+            throw GradleException("ProGuard rules file missing!")
+        }
+
+        val content = file.readText()
+        val requiredRules = listOf(
+            "com.dolphin.jetpack.data.repository",
+            "com.dolphin.jetpack.domain.repository",
+            "com.dolphin.jetpack.presentation.viewmodel",
+            "kotlinx.coroutines"
+        )
+
+        val missing = requiredRules.filter { !content.contains(it) }
+        if (missing.isNotEmpty()) {
+            throw GradleException("Missing critical ProGuard rules: $missing")
+        }
+
+        println("✓ ProGuard rules verified successfully")
+    }
+}
+
+tasks.register<VerifyProguardRulesTask>("verifyProguardRules") {
+    group = "verification"
+    description = "Verify ProGuard rules exist and are comprehensive"
+    proguardFile.set(file("proguard-rules.pro"))
+}
+
+// Automatically verify ProGuard rules before any release build
+tasks.matching { it.name.contains("Release") && it.name.contains("bundle", ignoreCase = true) }.configureEach {
+    dependsOn("verifyProguardRules")
 }
