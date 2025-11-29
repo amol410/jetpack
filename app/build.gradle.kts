@@ -31,15 +31,11 @@ android {
 
     buildTypes {
         release {
-            // ProGuard/R8 DISABLED - causing issues with quiz and notes loading
             isMinifyEnabled = false
-            isShrinkResources = false
-
-            // Generate mapping file for crash deobfuscation
-            // Upload this to Firebase Crashlytics for readable stack traces
-            ndk {
-                debugSymbolLevel = "FULL"
-            }
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
 
         debug {
