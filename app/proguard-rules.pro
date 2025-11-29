@@ -96,6 +96,16 @@
 -keep class * implements com.google.gson.JsonSerializer
 -keep class * implements com.google.gson.JsonDeserializer
 
+# Keep generic signatures for Gson reflection
+-keepattributes Signature
+-keepattributes EnclosingMethod
+-keepattributes InnerClasses
+
+# Prevent obfuscation of classes with @SerializedName
+-keepclassmembers,allowobfuscation class * {
+  @com.google.gson.annotations.SerializedName <fields>;
+}
+
 # Moshi
 -keepclasseswithmembers class * {
     @com.squareup.moshi.* <methods>;
