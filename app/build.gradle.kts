@@ -31,15 +31,9 @@ android {
 
     buildTypes {
         release {
-            // Enable R8 minification for smaller APK and better performance
-            // Now safe with comprehensive ProGuard rules
-            isMinifyEnabled = true
-            isShrinkResources = true
-
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            // ProGuard/R8 DISABLED - causing issues with quiz and notes loading
+            isMinifyEnabled = false
+            isShrinkResources = false
 
             // Generate mapping file for crash deobfuscation
             // Upload this to Firebase Crashlytics for readable stack traces
@@ -49,16 +43,7 @@ android {
         }
 
         debug {
-            // Disable minification in debug for faster builds
             isMinifyEnabled = false
-
-            // Optional: Enable minification in debug to test ProGuard rules
-            // Uncomment these lines when testing release builds locally
-            // isMinifyEnabled = true
-            // proguardFiles(
-            //     getDefaultProguardFile("proguard-android-optimize.txt"),
-            //     "proguard-rules.pro"
-            // )
         }
     }
 
