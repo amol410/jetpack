@@ -32,7 +32,9 @@
       "Bash(\"C:\\Users\\Admin\\AndroidStudioProjects\\Jetpack\\BACKEND_SYNC_DEBUG.md\")",
       "Bash(timeout 120 ./gradlew.bat assembleDebug --quiet)",
       "Bash(netstat:*)",
-      "Bash(tasklist:*)"
+      "Bash(tasklist:*)",
+      "Bash(./gradlew.bat tasks:*)",
+      "Bash(./gradlew.bat:*)"
     ],
     "deny": [],
     "ask": []

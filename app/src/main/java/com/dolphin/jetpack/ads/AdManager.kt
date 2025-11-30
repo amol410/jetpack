@@ -27,7 +27,7 @@ class AdManager(private val context: Context) {
         private const val PROD_INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-6038618318911032/2211241697"
 
         // Use test ads during development, production ads for release
-        private const val USE_TEST_ADS = true // Set to false for production
+        private const val USE_TEST_ADS = false // Set to false for production
 
         private val INTERSTITIAL_AD_UNIT_ID = if (USE_TEST_ADS) {
             TEST_INTERSTITIAL_AD_UNIT_ID
