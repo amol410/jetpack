@@ -38,6 +38,9 @@ interface ApiService {
     @POST("save_quiz_attempt.php")
     suspend fun saveQuizAttempt(@Body request: QuizAttemptRequest): Response<ApiResponse<QuizAttemptData>>
 
+    @POST("delete_quiz_attempt.php")
+    suspend fun deleteQuizAttempt(@Body request: DeleteQuizAttemptRequest): Response<ApiResponse<Any>>
+
     @GET("get_user_quiz_attempts.php")
     suspend fun getUserQuizAttempts(
         @Query("firebase_uid") firebaseUid: String,
@@ -47,7 +50,10 @@ interface ApiService {
     ): Response<ApiResponse<List<QuizAttemptBackend>>>
 
     @GET("get_quiz_attempt_detail.php")
-    suspend fun getQuizAttemptDetail(@Query("attempt_id") attemptId: Long): Response<ApiResponse<QuizAttemptDetailData>>
+    suspend fun getQuizAttemptDetail(
+        @Query("attempt_id") attemptId: Long,
+        @Query("firebase_uid") firebaseUid: String
+    ): Response<ApiResponse<QuizAttemptDetailData>>
 
     @GET("get_user_statistics.php")
     suspend fun getUserStatistics(@Query("firebase_uid") firebaseUid: String): Response<ApiResponse<StatisticsData>>

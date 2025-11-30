@@ -178,9 +178,9 @@ class QuizRemoteRepositoryImpl @Inject constructor(
         }
     }
     
-    override suspend fun getQuizAttemptDetail(attemptId: Long): Result<QuizAttempt> {
+    override suspend fun getQuizAttemptDetail(firebaseUid: String, attemptId: Long): Result<QuizAttempt> {
         return try {
-            val response = apiService.getQuizAttemptDetail(attemptId)
+            val response = apiService.getQuizAttemptDetail(attemptId, firebaseUid)
             
             if (response.isSuccessful && response.body()?.success == true) {
                 val data = response.body()?.data ?: return Result.failure(Exception("No data returned"))
@@ -269,6 +269,24 @@ class QuizRemoteRepositoryImpl @Inject constructor(
                 )
             } else {
                 Result.failure(Exception(response.body()?.message ?: "Failed to get user statistics"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteQuizAttempt(firebaseUid: String, attemptId: Long): Result<Unit> {
+        return try {
+            val request = DeleteQuizAttemptRequest(
+                firebase_uid = firebaseUid,
+                attempt_id = attemptId
+            )
+            val response = apiService.deleteQuizAttempt(request)
+
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(response.body()?.message ?: "Failed to delete quiz attempt"))
             }
         } catch (e: Exception) {
             Result.failure(e)

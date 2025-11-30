@@ -231,6 +231,10 @@ class QuizRepositoryImpl(
         return csv.toString()
     }
 
+    override suspend fun deleteRemoteAttempt(firebaseUid: String, attemptId: Long): Result<Unit> {
+        return quizRemoteRepository.deleteQuizAttempt(firebaseUid, attemptId)
+    }
+
     // Current user ID - needs to be set from the authentication system
     // Made volatile for thread-safe visibility across threads
     @Volatile
@@ -346,6 +350,14 @@ class QuizRepositoryImpl(
         } catch (e: Exception) {
             // Fallback to local statistics if remote sync fails
             Result.success(getStatistics())
+        }
+    }
+
+    override suspend fun getRemoteAttemptDetail(firebaseUid: String, attemptId: Long): Result<QuizAttempt> {
+        return try {
+            quizRemoteRepository.getQuizAttemptDetail(firebaseUid, attemptId)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }

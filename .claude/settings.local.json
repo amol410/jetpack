@@ -34,7 +34,8 @@
       "Bash(netstat:*)",
       "Bash(tasklist:*)",
       "Bash(./gradlew.bat tasks:*)",
-      "Bash(./gradlew.bat:*)"
+      "Bash(./gradlew.bat:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": []

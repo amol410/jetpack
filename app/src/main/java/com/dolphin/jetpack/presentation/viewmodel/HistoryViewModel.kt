@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dolphin.jetpack.domain.model.QuizAttempt
 import com.dolphin.jetpack.domain.repository.QuizRepository
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,17 +25,23 @@ class HistoryViewModel(
 
     private val _historyState = MutableStateFlow<HistoryUiState>(HistoryUiState.Loading)
     val historyState: StateFlow<HistoryUiState> = _historyState.asStateFlow()
-    
+
+    private val _detailError = MutableStateFlow<String?>(null)
+    val detailError: StateFlow<String?> = _detailError.asStateFlow()
+
     // For optimistic UI updates
     private var lastLocalHistory: List<QuizAttempt> = emptyList()
 
     private val _selectedAttempt = MutableStateFlow<QuizAttempt?>(null)
     val selectedAttempt: StateFlow<QuizAttempt?> = _selectedAttempt.asStateFlow()
 
+    // Cache of quiz title -> Quiz for option text resolution
+    private val _currentQuiz = MutableStateFlow<com.dolphin.jetpack.domain.model.Quiz?>(null)
+    val currentQuiz: StateFlow<com.dolphin.jetpack.domain.model.Quiz?> = _currentQuiz.asStateFlow()
+
     init {
         // Load initial data with optimistic approach
         viewModelScope.launch {
-            // Immediately show local data if available
             try {
                 val localAttempts = repository.getAllAttempts().first()
                 lastLocalHistory = localAttempts
@@ -43,8 +51,6 @@ class HistoryViewModel(
                     HistoryUiState.Success(localAttempts)
                 }
             } catch (e: Exception) {
-                // If local data fails, default to Empty state instead of Error
-                // since there's simply no data yet
                 _historyState.value = HistoryUiState.Empty
             }
         }
@@ -54,19 +60,21 @@ class HistoryViewModel(
         viewModelScope.launch {
             _historyState.value = HistoryUiState.Loading
             try {
-                val attempts = repository.getAllAttempts().first() // Get the first emission
-                lastLocalHistory = attempts
-                _historyState.value = if (attempts.isEmpty()) {
+                val attempts = repository.getAllAttempts().first()
+                val deduplicated = attempts
+                    .distinctBy { "${it.quizTitle}_${it.dateTime}_${it.score}_${it.totalQuestions}" }
+                    .sortedByDescending { it.dateTime }
+
+                lastLocalHistory = deduplicated
+                _historyState.value = if (deduplicated.isEmpty()) {
                     HistoryUiState.Empty
                 } else {
-                    HistoryUiState.Success(attempts)
+                    HistoryUiState.Success(deduplicated)
                 }
             } catch (e: Exception) {
-                // If loading fails but we have cached data, show it
                 if (lastLocalHistory.isNotEmpty()) {
                     _historyState.value = HistoryUiState.Success(lastLocalHistory)
                 } else {
-                    // No data available, show empty state instead of error
                     _historyState.value = HistoryUiState.Empty
                 }
             }
@@ -75,91 +83,64 @@ class HistoryViewModel(
 
     fun loadRemoteHistory(firebaseUid: String) {
         viewModelScope.launch {
-            android.util.Log.d("HistoryViewModel", "========================================")
-            android.util.Log.d("HistoryViewModel", "📥 LOADING REMOTE HISTORY")
-            android.util.Log.d("HistoryViewModel", "   - Firebase UID: $firebaseUid")
+            android.util.Log.d("HistoryViewModel", "=== Loading remote history ===")
+            android.util.Log.d("HistoryViewModel", "Firebase UID: $firebaseUid")
 
-            // First, immediately show local data if available (optimistic UI)
+            // Optimistic: show local data first
             try {
                 val localAttempts = repository.getAllAttempts().first()
-                lastLocalHistory = localAttempts
-                android.util.Log.d("HistoryViewModel", "   - Local attempts found: ${localAttempts.size}")
-                if (localAttempts.isNotEmpty()) {
-                    // Show local data immediately while fetching remote data in background
-                    _historyState.value = HistoryUiState.Success(localAttempts)
-                    android.util.Log.d("HistoryViewModel", "   - Showing local data first")
+                val deduplicated = localAttempts
+                    .distinctBy { "${it.quizTitle}_${it.dateTime}_${it.score}_${it.totalQuestions}" }
+                    .sortedByDescending { it.dateTime }
+
+                lastLocalHistory = deduplicated
+                if (deduplicated.isNotEmpty()) {
+                    _historyState.value = HistoryUiState.Success(deduplicated)
                 }
             } catch (e: Exception) {
-                android.util.Log.e("HistoryViewModel", "   - Error loading local data: ${e.message}")
-                // If even local data fails, show loading state
                 _historyState.value = HistoryUiState.Loading
             }
 
-            // Then, fetch remote data in the background
-            android.util.Log.d("HistoryViewModel", "📡 Fetching from backend...")
+            // Fetch from backend
             try {
                 val remoteResult = repository.syncAllQuizAttempts(firebaseUid)
                 remoteResult.fold(
                     onSuccess = { attempts ->
-                        android.util.Log.d("HistoryViewModel", "✅ Backend sync SUCCESS!")
-                        android.util.Log.d("HistoryViewModel", "   - Remote attempts: ${attempts.size}")
-                        // Update with fresh remote data
+                        lastLocalHistory = attempts
                         _historyState.value = if (attempts.isEmpty()) {
-                            android.util.Log.d("HistoryViewModel", "   - No attempts in backend")
                             HistoryUiState.Empty
                         } else {
-                            android.util.Log.d("HistoryViewModel", "   - Displaying ${attempts.size} attempts")
                             HistoryUiState.Success(attempts)
                         }
-                        android.util.Log.d("HistoryViewModel", "========================================")
                     },
                     onFailure = { error ->
-                        android.util.Log.e("HistoryViewModel", "❌ Backend sync FAILED: ${error.message}")
-                        // If remote fails, check if it's a "no data" scenario or actual error
                         if (lastLocalHistory.isNotEmpty()) {
-                            // Show local data if available
-                            android.util.Log.d("HistoryViewModel", "   - Showing local data as fallback")
                             _historyState.value = HistoryUiState.Success(lastLocalHistory)
                         } else {
-                            // Check if error message indicates "no data" vs actual error
-                            val isNoDataError = error.message?.contains("no data", ignoreCase = true) == true ||
-                                               error.message?.contains("not found", ignoreCase = true) == true ||
-                                               error.message?.contains("user not found", ignoreCase = true) == true ||
-                                               error.message?.contains("empty", ignoreCase = true) == true
-
-                            _historyState.value = if (isNoDataError) {
-                                android.util.Log.d("HistoryViewModel", "   - No data found (expected)")
+                            val isNoData = error.message?.contains("no data", true) == true ||
+                                error.message?.contains("not found", true) == true ||
+                                error.message?.contains("empty", true) == true
+                            _historyState.value = if (isNoData) {
                                 HistoryUiState.Empty
                             } else {
-                                android.util.Log.e("HistoryViewModel", "   - Actual error occurred")
                                 HistoryUiState.Error("Failed to load data: ${error.message}")
                             }
                         }
-                        android.util.Log.d("HistoryViewModel", "========================================")
                     }
                 )
             } catch (e: Exception) {
-                android.util.Log.e("HistoryViewModel", "💥 EXCEPTION: ${e.message}", e)
-                // If remote sync fails, keep showing local data or show appropriate state
                 if (lastLocalHistory.isNotEmpty()) {
-                    android.util.Log.d("HistoryViewModel", "   - Showing local data as fallback")
                     _historyState.value = HistoryUiState.Success(lastLocalHistory)
                 } else {
-                    // Check if exception indicates "no data" vs actual error
-                    val isNoDataError = e.message?.contains("no data", ignoreCase = true) == true ||
-                                       e.message?.contains("not found", ignoreCase = true) == true ||
-                                       e.message?.contains("user not found", ignoreCase = true) == true ||
-                                       e.message?.contains("empty", ignoreCase = true) == true
-
-                    _historyState.value = if (isNoDataError) {
-                        android.util.Log.d("HistoryViewModel", "   - No data found (expected)")
+                    val isNoData = e.message?.contains("no data", true) == true ||
+                        e.message?.contains("not found", true) == true ||
+                        e.message?.contains("empty", true) == true
+                    _historyState.value = if (isNoData) {
                         HistoryUiState.Empty
                     } else {
-                        android.util.Log.e("HistoryViewModel", "   - Actual error occurred")
                         HistoryUiState.Error("Failed to load data: ${e.message}")
                     }
                 }
-                android.util.Log.d("HistoryViewModel", "========================================")
             }
         }
     }
@@ -167,20 +148,77 @@ class HistoryViewModel(
     fun loadAttemptDetail(attemptId: Long) {
         viewModelScope.launch {
             try {
-                val attempt = repository.getAttemptById(attemptId)
-                _selectedAttempt.value = attempt
+                _detailError.value = null
+                android.util.Log.d("HistoryViewModel", "Loading attempt detail: $attemptId")
+
+                // Show cached attempt immediately
+                val cached = lastLocalHistory.find { it.id == attemptId }
+                    ?: (historyState.value as? HistoryUiState.Success)?.attempts?.find { it.id == attemptId }
+                if (cached != null) {
+                    _selectedAttempt.value = cached
+                }
+
+                // Try local DB with answers
+                val localAttempt = repository.getAttemptById(attemptId)
+                if (localAttempt != null) {
+                    _selectedAttempt.value = localAttempt
+                    loadQuizForAttempt(localAttempt.quizTitle)
+                    _detailError.value = null
+                } else {
+                    // Fetch from backend
+                    val user = getCurrentUser()
+                    if (user == null) {
+                        _detailError.value = "Sign in to load quiz details from cloud"
+                    } else {
+                        val remoteResult = repository.getRemoteAttemptDetail(user.uid, attemptId)
+                        remoteResult.fold(
+                            onSuccess = { attempt ->
+                                _selectedAttempt.value = attempt
+                                loadQuizForAttempt(attempt.quizTitle)
+                                _detailError.value = null
+                            },
+                            onFailure = { error ->
+                                _detailError.value = error.message ?: "Failed to load quiz details"
+                            }
+                        )
+                    }
+                }
             } catch (e: Exception) {
-                // Handle error
+                _detailError.value = e.message ?: "Unexpected error loading details"
+                if (_selectedAttempt.value == null) {
+                    _selectedAttempt.value = lastLocalHistory.find { it.id == attemptId }
+                }
             }
         }
     }
 
     fun deleteAttempt(attemptId: Long) {
         viewModelScope.launch {
+            val currentList = (historyState.value as? HistoryUiState.Success)?.attempts ?: lastLocalHistory
+
+            // Optimistically update UI and cache
+            val updatedList = currentList.filterNot { it.id == attemptId }
+            lastLocalHistory = updatedList
+            _historyState.value = if (updatedList.isEmpty()) HistoryUiState.Empty else HistoryUiState.Success(updatedList)
+
             try {
                 repository.deleteAttempt(attemptId)
-                loadHistory()
+                getCurrentUser()?.let { user ->
+                    val result = repository.deleteRemoteAttempt(user.uid, attemptId)
+                    result.onFailure { error ->
+                        // Revert on remote failure so state matches backend
+                        lastLocalHistory = currentList
+                        _historyState.value = if (currentList.isEmpty()) {
+                            HistoryUiState.Empty
+                        } else {
+                            HistoryUiState.Success(currentList)
+                        }
+                        _historyState.value = HistoryUiState.Error(error.message ?: "Failed to delete from cloud")
+                    }
+                }
             } catch (e: Exception) {
+                // Revert to previous list on failure
+                lastLocalHistory = currentList
                 _historyState.value = HistoryUiState.Error(e.message ?: "Failed to delete")
             }
         }
@@ -193,6 +231,21 @@ class HistoryViewModel(
                 _historyState.value = HistoryUiState.Empty
             } catch (e: Exception) {
                 _historyState.value = HistoryUiState.Error(e.message ?: "Failed to clear history")
+            }
+        }
+    }
+
+    private fun getCurrentUser(): FirebaseUser? = FirebaseAuth.getInstance().currentUser
+
+    private fun loadQuizForAttempt(quizTitle: String) {
+        viewModelScope.launch {
+            try {
+                // Look up the quiz in the cached local content repository via ContentRepository (through QuizViewModel normally)
+                // Here we approximate by using the saved attempt and local history quizzes; if not found, leave null.
+                val localQuiz = com.dolphin.jetpack.data.local.DataProvider.quizList.find { it.title == quizTitle }
+                _currentQuiz.value = localQuiz
+            } catch (_: Exception) {
+                _currentQuiz.value = null
             }
         }
     }

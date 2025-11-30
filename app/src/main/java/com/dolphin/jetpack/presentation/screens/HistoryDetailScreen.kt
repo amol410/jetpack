@@ -22,8 +22,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dolphin.jetpack.AppModule
 import com.dolphin.jetpack.domain.model.QuizAttempt
+import com.dolphin.jetpack.domain.model.QuestionAnswer
 import com.dolphin.jetpack.presentation.viewmodel.HistoryViewModel
+import com.dolphin.jetpack.presentation.util.QuestionOptionResolver
+import com.dolphin.jetpack.data.remote.NetworkResult
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -36,9 +40,33 @@ fun HistoryDetailScreen(
     modifier: Modifier = Modifier
 ) {
     val selectedAttempt by viewModel.selectedAttempt.collectAsState()
+    val detailError by viewModel.detailError.collectAsState()
+    var resolvedQuiz by remember { mutableStateOf<com.dolphin.jetpack.domain.model.Quiz?>(null) }
+    val contentRepository = remember { AppModule.provideContentRepository() }
 
     LaunchedEffect(attemptId) {
         viewModel.loadAttemptDetail(attemptId)
+    }
+
+    // Resolve quiz details (to get option text) using content repository
+    LaunchedEffect(selectedAttempt) {
+        resolvedQuiz = null
+        val attempt = selectedAttempt
+        if (attempt != null) {
+            // Find quiz id by title first
+            when (val listResult = contentRepository.getQuizzes()) {
+                is NetworkResult.Success -> {
+                    val match = listResult.data.find { it.title == attempt.quizTitle }
+                    if (match != null) {
+                        when (val quizResult = contentRepository.getQuiz(match.id)) {
+                            is NetworkResult.Success -> resolvedQuiz = quizResult.data
+                            else -> {}
+                        }
+                    }
+                }
+                else -> {}
+            }
+        }
     }
 
     // Handle back button press
@@ -113,14 +141,53 @@ fun HistoryDetailScreen(
                     itemsIndexed(attempt.questionAnswers) { index, answer ->
                         QuestionAnswerCard(
                             questionNumber = index + 1,
-                            questionAnswer = answer
+                            questionAnswer = answer,
+                            quiz = resolvedQuiz
                         )
+                    }
+
+                    if (attempt.questionAnswers.isEmpty() && detailError != null) {
+                        item {
+                            AssistChip(
+                                onClick = { viewModel.loadAttemptDetail(attemptId) },
+                                label = { Text(detailError ?: "") },
+                                colors = AssistChipDefaults.assistChipColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    labelColor = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            )
+                        }
                     }
                 }
             } ?: run {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center)
-                )
+                if (detailError != null) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = detailError ?: "",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(onClick = { viewModel.loadAttemptDetail(attemptId) }) {
+                            Text("Retry")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(onClick = onBack) {
+                            Text("Back")
+                        }
+                    }
+                } else {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
             }
         }
     }
@@ -239,7 +306,8 @@ fun AttemptStatisticsCard(attempt: QuizAttempt) {
 @Composable
 fun QuestionAnswerCard(
     questionNumber: Int,
-    questionAnswer: com.dolphin.jetpack.domain.model.QuestionAnswer
+    questionAnswer: com.dolphin.jetpack.domain.model.QuestionAnswer,
+    quiz: com.dolphin.jetpack.domain.model.Quiz?
 ) {
     val backgroundColor = if (questionAnswer.isCorrect) {
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
@@ -290,20 +358,33 @@ fun QuestionAnswerCard(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
+                val optionTexts = remember(questionAnswer, quiz) {
+                    if (quiz != null) {
+                        val resolved = QuestionOptionResolver.resolveOptionTexts(quiz, listOf(questionAnswer))
+                        resolved[questionAnswer.questionIndex]
+                    } else null
+                }
+
                 if (!questionAnswer.isCorrect) {
+                    val selectedText = optionTexts?.second
+                    val correctText = optionTexts?.first
                     Text(
-                        text = "Your answer: Option ${questionAnswer.selectedAnswer + 1}",
+                        text = selectedText?.let { "Your answer: $it" }
+                            ?: "Your answer: Option ${questionAnswer.selectedAnswer + 1}",
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.error
                     )
                     Text(
-                        text = "Correct answer: Option ${questionAnswer.correctAnswer + 1}",
+                        text = correctText?.let { "Correct answer: $it" }
+                            ?: "Correct answer: Option ${questionAnswer.correctAnswer + 1}",
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.primary
                     )
                 } else {
+                    val correctText = optionTexts?.first
                     Text(
-                        text = "Correct! Option ${questionAnswer.correctAnswer + 1}",
+                        text = correctText?.let { "Correct! $it" }
+                            ?: "Correct! Option ${questionAnswer.correctAnswer + 1}",
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.primary
                     )

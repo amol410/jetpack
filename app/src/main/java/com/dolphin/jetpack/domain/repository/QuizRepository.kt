@@ -38,8 +38,12 @@ interface QuizRepository {
     // Export
     suspend fun exportToCSV(): String
 
+    // Remote delete
+    suspend fun deleteRemoteAttempt(firebaseUid: String, attemptId: Long): Result<Unit>
+
     // Remote sync operations
     suspend fun syncQuizAttempt(firebaseUid: String, attempt: QuizAttempt): Result<Long>
     suspend fun syncAllQuizAttempts(firebaseUid: String): Result<List<QuizAttempt>>
     suspend fun syncUserStatistics(firebaseUid: String): Result<QuizStatistics>
+    suspend fun getRemoteAttemptDetail(firebaseUid: String, attemptId: Long): Result<QuizAttempt>
 }

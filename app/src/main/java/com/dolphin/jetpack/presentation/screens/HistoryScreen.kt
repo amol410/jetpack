@@ -4,6 +4,7 @@ package com.dolphin.jetpack.presentation.screens
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -72,7 +73,13 @@ fun HistoryScreen(
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(state.attempts, key = { it.id }) { attempt ->
+                            items(
+                                state.attempts,
+                                key = { attempt ->
+                                    // Use composite key to ensure uniqueness even if IDs conflict
+                                    "${attempt.id}_${attempt.quizTitle}_${attempt.dateTime}"
+                                }
+                            ) { attempt ->
                                 HistoryItemCard(
                                     attempt = attempt,
                                     onClick = { onAttemptClick(attempt.id) },
@@ -244,10 +251,12 @@ fun HistoryItemCard(
     onDelete: () -> Unit
 ) {
     val dateFormat = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
+    val isDark = isSystemInDarkTheme()
+
     val scoreColor = when {
-        attempt.percentage >= 90 -> SuccessGreen
-        attempt.percentage >= 70 -> InfoBlue
-        attempt.percentage >= 50 -> WarningYellow
+        attempt.percentage >= 90 -> if (isDark) SuccessGreenDark else SuccessGreen
+        attempt.percentage >= 70 -> if (isDark) InfoBlueDark else InfoBlue
+        attempt.percentage >= 50 -> if (isDark) WarningYellowDark else WarningYellow
         else -> QuizError
     }
 

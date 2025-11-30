@@ -6,6 +6,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -305,6 +306,10 @@ fun OverallStatsCard(statistics: QuizStatistics) {
 
 @Composable
 fun StatCircle(value: String, label: String, color: Color, darkColor: Color) {
+    val isDark = isSystemInDarkTheme()
+    val displayColor = if (isDark) darkColor else color
+    val borderColor = MaterialTheme.colorScheme.primary
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -312,16 +317,16 @@ fun StatCircle(value: String, label: String, color: Color, darkColor: Color) {
         Box(
             modifier = Modifier
                 .size(72.dp)
-                .border(width = 2.dp, color = PrimaryLight, shape = CircleShape)
+                .border(width = 2.dp, color = borderColor, shape = CircleShape)
                 .clip(CircleShape)
-                .background(color = color.copy(alpha = 0.1f)),
+                .background(color = displayColor.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = value,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = darkColor,
+                color = displayColor,
                 textAlign = TextAlign.Center
             )
         }

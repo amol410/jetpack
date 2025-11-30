@@ -135,6 +135,11 @@ data class QuizAttemptDetailData(
     val answers: List<QuestionAnswerBackend> = emptyList()
 )
 
+data class DeleteQuizAttemptRequest(
+    val firebase_uid: String,
+    val attempt_id: Long
+)
+
 data class QuestionAnswerBackend(
     val question_index: Int,
     val question_text: String,

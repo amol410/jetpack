@@ -96,9 +96,15 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val themePreferences = remember { ThemePreferences(applicationContext) }
-            val isDarkMode by themePreferences.isDarkModeFlow.collectAsState(initial = false)
+            val themeMode by themePreferences.themeModeFlow.collectAsState(initial = com.dolphin.jetpack.util.ThemeMode.SYSTEM)
 
-            JetpackTheme(darkTheme = isDarkMode) {
+            val isDarkTheme = when (themeMode) {
+                com.dolphin.jetpack.util.ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
+                com.dolphin.jetpack.util.ThemeMode.LIGHT -> false
+                com.dolphin.jetpack.util.ThemeMode.DARK -> true
+            }
+
+            JetpackTheme(darkTheme = isDarkTheme) {
                 QuizApp()
             }
         }

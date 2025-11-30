@@ -1076,10 +1076,16 @@ fun CodeView(buttonType: String) {
     val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
     var showCopiedMessage by remember { mutableStateOf(false) }
 
+    // Theme-aware code view colors
+    val codeBackgroundColor = MaterialTheme.colorScheme.surfaceVariant
+    val codeLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val kotlinBadgeColor = MaterialTheme.colorScheme.primary
+    val kotlinBadgeBackground = MaterialTheme.colorScheme.primaryContainer
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF2B2B2B) // Dark IDE background
+            containerColor = codeBackgroundColor
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -1098,15 +1104,15 @@ fun CodeView(buttonType: String) {
                         text = "Code Example",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFCCCCCC)
+                        color = codeLabelColor
                     )
                     Text(
                         text = "Kotlin",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF6897BB),
+                        color = kotlinBadgeColor,
                         modifier = Modifier
                             .background(
-                                Color(0xFF3C3F41),
+                                kotlinBadgeBackground,
                                 shape = MaterialTheme.shapes.small
                             )
                             .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -1125,7 +1131,7 @@ fun CodeView(buttonType: String) {
                     Icon(
                         imageVector = if (showCopiedMessage) Icons.Default.Done else Icons.Default.ContentCopy,
                         contentDescription = "Copy code",
-                        tint = if (showCopiedMessage) Color(0xFF4CAF50) else Color(0xFFCCCCCC),
+                        tint = if (showCopiedMessage) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -1146,6 +1152,14 @@ fun CodeView(buttonType: String) {
 
 @Composable
 fun SyntaxHighlightedCode(code: String) {
+    // Theme-aware syntax highlighting colors
+    val keywordColor = MaterialTheme.colorScheme.tertiary
+    val functionColor = MaterialTheme.colorScheme.secondary
+    val stringColor = MaterialTheme.colorScheme.primary
+    val numberColor = MaterialTheme.colorScheme.primaryContainer
+    val operatorColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val defaultTextColor = MaterialTheme.colorScheme.onSurface
+
     val annotatedString = buildAnnotatedString {
         var currentIndex = 0
         val keywords = listOf(
@@ -1190,7 +1204,7 @@ fun SyntaxHighlightedCode(code: String) {
                     (currentIndex + keyword.length >= code.length ||
                             !code[currentIndex + keyword.length].isLetterOrDigit())
                 ) {
-                    withStyle(SpanStyle(color = Color(0xFFCC7832))) { // Orange for keywords
+                    withStyle(SpanStyle(color = keywordColor)) {
                         append(keyword)
                     }
                     currentIndex += keyword.length
@@ -1206,7 +1220,7 @@ fun SyntaxHighlightedCode(code: String) {
                         (currentIndex + function.length >= code.length ||
                                 !code[currentIndex + function.length].isLetterOrDigit())
                     ) {
-                        withStyle(SpanStyle(color = Color(0xFFFFC66D))) { // Yellow for functions
+                        withStyle(SpanStyle(color = functionColor)) {
                             append(function)
                         }
                         currentIndex += function.length
@@ -1225,7 +1239,7 @@ fun SyntaxHighlightedCode(code: String) {
                     }
                     if (endIndex < code.length) {
                         endIndex++
-                        withStyle(SpanStyle(color = Color(0xFF6A8759))) { // Green for strings
+                        withStyle(SpanStyle(color = stringColor)) {
                             append(code.substring(currentIndex, endIndex))
                         }
                         currentIndex = endIndex
@@ -1241,7 +1255,7 @@ fun SyntaxHighlightedCode(code: String) {
                     while (endIndex < code.length && code[endIndex].isDigit()) {
                         endIndex++
                     }
-                    withStyle(SpanStyle(color = Color(0xFF6897BB))) { // Blue for numbers
+                    withStyle(SpanStyle(color = numberColor)) {
                         append(code.substring(currentIndex, endIndex))
                     }
                     currentIndex = endIndex
@@ -1252,13 +1266,13 @@ fun SyntaxHighlightedCode(code: String) {
             if (!matched) {
                 // Check for special characters and operators
                 if (code[currentIndex] in listOf('=', '{', '}', '(', ')', ',', ':', '.', '+', '-')) {
-                    withStyle(SpanStyle(color = Color(0xFFCCCCCC))) { // Light gray for operators
+                    withStyle(SpanStyle(color = operatorColor)) {
                         append(code[currentIndex])
                     }
                     currentIndex++
                 } else {
                     // Default text color
-                    withStyle(SpanStyle(color = Color(0xFFA9B7C6))) { // Light blue-gray for regular text
+                    withStyle(SpanStyle(color = defaultTextColor)) {
                         append(code[currentIndex])
                     }
                     currentIndex++

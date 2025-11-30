@@ -34,7 +34,7 @@ fun SettingsScreen(
     val authState = authViewModel.authState.collectAsState()
     val context = LocalContext.current
     val themePreferences = remember { ThemePreferences(context) }
-    val isDarkMode by themePreferences.isDarkModeFlow.collectAsState(initial = false)
+    val themeMode by themePreferences.themeModeFlow.collectAsState(initial = com.dolphin.jetpack.util.ThemeMode.SYSTEM)
     val coroutineScope = rememberCoroutineScope()
 
     // Handle system back gesture - navigate back to quiz screen
@@ -104,33 +104,65 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Dark Mode Toggle
+                    // Theme Selection
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
-                        Row(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                                .padding(16.dp)
                         ) {
                             Text(
-                                text = "Dark Mode",
+                                text = "Theme",
                                 fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(bottom = 12.dp)
                             )
-                            Switch(
-                                checked = isDarkMode,
-                                onCheckedChange = { enabled ->
-                                    coroutineScope.launch {
-                                        themePreferences.setDarkMode(enabled)
-                                    }
-                                }
-                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                // System Default
+                                FilterChip(
+                                    selected = themeMode == com.dolphin.jetpack.util.ThemeMode.SYSTEM,
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            themePreferences.setThemeMode(com.dolphin.jetpack.util.ThemeMode.SYSTEM)
+                                        }
+                                    },
+                                    label = { Text("System") },
+                                    modifier = Modifier.weight(1f).padding(end = 4.dp)
+                                )
+
+                                // Light
+                                FilterChip(
+                                    selected = themeMode == com.dolphin.jetpack.util.ThemeMode.LIGHT,
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            themePreferences.setThemeMode(com.dolphin.jetpack.util.ThemeMode.LIGHT)
+                                        }
+                                    },
+                                    label = { Text("Light") },
+                                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
+                                )
+
+                                // Dark
+                                FilterChip(
+                                    selected = themeMode == com.dolphin.jetpack.util.ThemeMode.DARK,
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            themePreferences.setThemeMode(com.dolphin.jetpack.util.ThemeMode.DARK)
+                                        }
+                                    },
+                                    label = { Text("Dark") },
+                                    modifier = Modifier.weight(1f).padding(start = 4.dp)
+                                )
+                            }
                         }
                     }
 
