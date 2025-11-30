@@ -11,6 +11,9 @@ interface QuizAttemptDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAttempt(attempt: QuizAttemptEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAttempts(attempts: List<QuizAttemptEntity>)
+
     @Query("SELECT * FROM quiz_attempts WHERE userId = :userId ORDER BY dateTime DESC")
     fun getAllAttemptsByUserId(userId: String): Flow<List<QuizAttemptEntity>>
 

@@ -164,24 +164,13 @@ class HistoryViewModel(
                     _selectedAttempt.value = localAttempt
                     loadQuizForAttempt(localAttempt.quizTitle)
                     _detailError.value = null
+                    // If we have no answers locally, try fetching detail from backend for this attempt
+                    if (localAttempt.questionAnswers.isEmpty()) {
+                        fetchRemoteAttemptDetail(attemptId)
+                    }
                 } else {
                     // Fetch from backend
-                    val user = getCurrentUser()
-                    if (user == null) {
-                        _detailError.value = "Sign in to load quiz details from cloud"
-                    } else {
-                        val remoteResult = repository.getRemoteAttemptDetail(user.uid, attemptId)
-                        remoteResult.fold(
-                            onSuccess = { attempt ->
-                                _selectedAttempt.value = attempt
-                                loadQuizForAttempt(attempt.quizTitle)
-                                _detailError.value = null
-                            },
-                            onFailure = { error ->
-                                _detailError.value = error.message ?: "Failed to load quiz details"
-                            }
-                        )
-                    }
+                    fetchRemoteAttemptDetail(attemptId)
                 }
             } catch (e: Exception) {
                 _detailError.value = e.message ?: "Unexpected error loading details"
@@ -248,5 +237,24 @@ class HistoryViewModel(
                 _currentQuiz.value = null
             }
         }
+    }
+
+    private suspend fun fetchRemoteAttemptDetail(attemptId: Long) {
+        val user = getCurrentUser()
+        if (user == null) {
+            _detailError.value = "Sign in to load quiz details from cloud"
+            return
+        }
+        val remoteResult = repository.getRemoteAttemptDetail(user.uid, attemptId)
+        remoteResult.fold(
+            onSuccess = { attempt ->
+                _selectedAttempt.value = attempt
+                loadQuizForAttempt(attempt.quizTitle)
+                _detailError.value = null
+            },
+            onFailure = { error ->
+                _detailError.value = error.message ?: "Failed to load quiz details"
+            }
+        )
     }
 }

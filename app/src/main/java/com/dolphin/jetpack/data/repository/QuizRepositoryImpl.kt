@@ -12,7 +12,7 @@ import com.dolphin.jetpack.domain.repository.QuizRemoteRepository
 import com.dolphin.jetpack.domain.repository.QuizRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.encodeToString 
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.*
@@ -28,7 +28,7 @@ class QuizRepositoryImpl(
     override suspend fun saveQuizAttempt(attempt: QuizAttempt): Long {
         // Get the user ID from the authentication system
         val userId = getCurrentUserId() ?: "unknown_user"
-        
+
         val entity = QuizAttemptEntity(
             id = attempt.id,
             userId = userId,
@@ -282,7 +282,7 @@ class QuizRepositoryImpl(
     private fun QuestionAnswer.toEntity(): QuestionAnswerEntity {
         // Use the current user ID for the question answer
         val userId = getCurrentUserId() ?: "unknown_user"
-        
+
         return QuestionAnswerEntity(
             id = id,
             attemptId = attemptId,
@@ -309,27 +309,40 @@ class QuizRepositoryImpl(
 
     override suspend fun syncAllQuizAttempts(firebaseUid: String): Result<List<QuizAttempt>> {
         return try {
-            android.util.Log.d("QuizRepository", "🔄 Syncing all quiz attempts for: $firebaseUid")
+            android.util.Log.d("QuizRepository", "Syncing all quiz attempts for: $firebaseUid")
 
             // Get from remote backend
             val remoteResult = quizRemoteRepository.getUserQuizAttempts(firebaseUid)
             remoteResult.onSuccess { remoteAttempts ->
                 android.util.Log.d("QuizRepository", "   - Remote attempts fetched: ${remoteAttempts.size}")
 
-                // Get local attempts
-                val localAttempts = quizAttemptDao.getAllAttemptsSync().map { it.toDomain() }
-                android.util.Log.d("QuizRepository", "   - Local attempts found: ${localAttempts.size}")
+                // Replace local cache with remote attempts for this user to avoid duplicates
+                val userId = getCurrentUserId() ?: "unknown_user"
+                quizAttemptDao.deleteAllAttemptsForUser(userId)
+                questionAnswerDao.deleteAllQuestionAnswersForUser(userId)
 
-                // Deduplicate: prefer remote attempts, but include local-only attempts
-                // Group by unique key: quizTitle + dateTime + score (to identify same attempt)
-                val allAttempts = (remoteAttempts + localAttempts)
-                    .distinctBy { "${it.quizTitle}_${it.dateTime}_${it.score}_${it.totalQuestions}" }
-                    .sortedByDescending { it.dateTime }
+                val entities = remoteAttempts.map {
+                    QuizAttemptEntity(
+                        id = it.id,
+                        userId = userId,
+                        quizTitle = it.quizTitle,
+                        dateTime = it.dateTime,
+                        score = it.score,
+                        totalQuestions = it.totalQuestions,
+                        timeTakenSeconds = it.timeTakenSeconds,
+                        percentage = it.percentage,
+                        timerEnabled = it.timerEnabled,
+                        timerMinutes = it.timerMinutes
+                    )
+                }
+                if (entities.isNotEmpty()) {
+                    quizAttemptDao.insertAttempts(entities)
+                    android.util.Log.d("QuizRepository", "   - Cached ${entities.size} remote attempts locally")
+                }
 
-                android.util.Log.d("QuizRepository", "   - Merged & deduplicated: ${allAttempts.size} total")
-
-                // Return the merged and deduplicated list
-                return Result.success(allAttempts)
+                val sortedRemote = remoteAttempts.sortedByDescending { it.dateTime }
+                android.util.Log.d("QuizRepository", "   - Returning ${sortedRemote.size} remote attempts")
+                return Result.success(sortedRemote)
             }
             remoteResult.onFailure { error ->
                 android.util.Log.e("QuizRepository", "   - Remote fetch failed: ${error.message}")
