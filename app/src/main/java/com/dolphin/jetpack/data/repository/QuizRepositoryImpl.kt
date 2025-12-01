@@ -83,6 +83,8 @@ class QuizRepositoryImpl(
     }
 
     override suspend fun deleteAttempt(id: Long) {
+        // Remove answers first to keep DB consistent
+        questionAnswerDao.deleteQuestionAnswersByAttempt(id)
         quizAttemptDao.deleteAttemptById(id)
     }
 

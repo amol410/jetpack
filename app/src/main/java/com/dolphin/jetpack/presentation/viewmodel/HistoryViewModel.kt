@@ -185,29 +185,28 @@ class HistoryViewModel(
         viewModelScope.launch {
             val currentList = (historyState.value as? HistoryUiState.Success)?.attempts ?: lastLocalHistory
 
-            // Optimistically update UI and cache
-            val updatedList = currentList.filterNot { it.id == attemptId }
-            lastLocalHistory = updatedList
-            _historyState.value = if (updatedList.isEmpty()) HistoryUiState.Empty else HistoryUiState.Success(updatedList)
-
             try {
-                repository.deleteAttempt(attemptId)
-                getCurrentUser()?.let { user ->
-                    val result = repository.deleteRemoteAttempt(user.uid, attemptId)
-                    result.onFailure { error ->
-                        // Revert on remote failure so state matches backend
-                        lastLocalHistory = currentList
-                        _historyState.value = if (currentList.isEmpty()) {
-                            HistoryUiState.Empty
-                        } else {
-                            HistoryUiState.Success(currentList)
-                        }
-                        _historyState.value = HistoryUiState.Error(error.message ?: "Failed to delete from cloud")
-                    }
+                // Delete remote first so a later sync won't resurrect the attempt
+                val user = getCurrentUser()
+                val remoteResult = if (user != null) {
+                    repository.deleteRemoteAttempt(user.uid, attemptId)
+                } else {
+                    Result.success(Unit) // Nothing to delete remotely if not signed in
                 }
+                remoteResult.exceptionOrNull()?.let { error ->
+                    val message = error.message?.lowercase() ?: ""
+                    // Treat "not found" as success to avoid resurrecting already-removed attempts
+                    if (!message.contains("not found")) throw error
+                }
+
+                repository.deleteAttempt(attemptId)
+
+                // Optimistically update UI and cache after successful deletions
+                val updatedList = currentList.filterNot { it.id == attemptId }
+                lastLocalHistory = updatedList
+                _historyState.value = if (updatedList.isEmpty()) HistoryUiState.Empty else HistoryUiState.Success(updatedList)
             } catch (e: Exception) {
-                // Revert to previous list on failure
-                lastLocalHistory = currentList
+                // Keep current state but surface the failure
                 _historyState.value = HistoryUiState.Error(e.message ?: "Failed to delete")
             }
         }
@@ -216,6 +215,21 @@ class HistoryViewModel(
     fun clearAllHistory() {
         viewModelScope.launch {
             try {
+                val attemptsToDelete = (historyState.value as? HistoryUiState.Success)?.attempts ?: lastLocalHistory
+                val user = getCurrentUser()
+
+                // Best-effort remote cleanup to prevent deleted attempts from coming back on sync
+                if (user != null && attemptsToDelete.isNotEmpty()) {
+                    attemptsToDelete.forEach { attempt ->
+                        repository.deleteRemoteAttempt(user.uid, attempt.id).exceptionOrNull()?.let { error ->
+                            val message = error.message?.lowercase() ?: ""
+                            if (!message.contains("not found")) {
+                                throw error
+                            }
+                        }
+                    }
+                }
+
                 repository.deleteAllAttempts()
                 _historyState.value = HistoryUiState.Empty
             } catch (e: Exception) {

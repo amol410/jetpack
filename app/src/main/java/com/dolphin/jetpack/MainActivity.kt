@@ -305,6 +305,7 @@ fun MainQuizApp(authViewModel: AuthViewModel) {
 
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = currentScreen != Screen.QuizInProgress,
         drawerContent = {
             ModalDrawerSheet(
                 modifier = Modifier.fillMaxWidth(0.6f) // 60% of screen width
